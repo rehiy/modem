@@ -28,7 +28,7 @@ at/
 ## 安装使用
 
 ```go
-go get github.com/rehiy/at
+go get github.com/rehiy/modem
 ```
 
 ## 快速开始
@@ -38,8 +38,8 @@ package main
 
 import (
     "fmt"
-    "github.com/rehiy/at"
     "io"
+    "github.com/rehiy/modem/at"
 )
 
 func main() {

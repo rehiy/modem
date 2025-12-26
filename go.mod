@@ -1,3 +1,3 @@
-module github.com/rehiy/at
+module github.com/rehiy/modem
 
 go 1.18

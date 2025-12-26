@@ -28,7 +28,7 @@ at/
 ## Installation
 
 ```go
-go get github.com/rehiy/at
+go get github.com/rehiy/modem
 ```
 
 ## Quick Start
@@ -38,8 +38,8 @@ package main
 
 import (
     "fmt"
-    "github.com/rehiy/at"
     "io"
+    "github.com/rehiy/modem/at"
 )
 
 func main() {
