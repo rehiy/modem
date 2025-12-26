@@ -57,13 +57,14 @@ func main() {
     }
     
     fmt.Printf("信号强度: %s\n", response)
-}}```
+}
+```
 
-## API文档
+## API 文档
 
 ### 核心类型
 
-#### AT结构体
+#### AT 结构体
 
 ```go
 type AT struct {
@@ -71,7 +72,7 @@ type AT struct {
 }
 ```
 
-主要方法：
+#### 主要方法
 
 - `New(modem io.ReadWriter, options ...Option) *AT` - 创建新的AT实例
 - `Command(cmd string, options ...CommandOption) ([]string, error)` - 执行AT命令
@@ -81,8 +82,6 @@ type AT struct {
 - `Closed() <-chan struct{}` - 获取连接状态通道
 
 ### 配置选项
-
-包提供多种配置选项：
 
 #### 构造函数选项
 
@@ -101,8 +100,6 @@ type AT struct {
 
 ### 错误类型
 
-包定义了特定场景的错误类型：
-
 - `ErrClosed` - 操作无法执行，调制解调器已关闭
 - `ErrDeadlineExceeded` - 调制解调器未在要求时间内完成操作
 - `ErrError` - 调制解调器返回通用AT ERROR
@@ -116,7 +113,7 @@ type AT struct {
 - `InfoHandler func([]string)` - 指示信息的处理器函数
 - `IndicationOption` - 指示配置选项的接口
 
-### API参考表格
+### API 参考表格
 
 | 类别 | 方法/类型 | 描述 | 参数 | 返回值 |
 |------|-----------|------|------|--------|
@@ -149,9 +146,9 @@ type AT struct {
 
 **注意**：命令不应包含"AT"前缀或行结束符 - 这些由包自动处理。
 
-### 详细API使用
+### 详细 API 使用
 
-#### Command方法
+#### Command 方法
 
 ```go
 // 执行标准AT命令
@@ -170,7 +167,8 @@ if err != nil {
     log.Printf("制造商: %v", response)
 }
 ```
-#### SMSCommand方法
+
+#### SMSCommand 方法
 
 ```go
 // 在文本模式下执行SMS命令
@@ -305,26 +303,6 @@ atModem.AddIndication("+CREG:", networkHandler, at.WithTrailingLine)
 
 所有调制解调器访问都通过通道进行序列化，确保并发安全。
 
-#### 模块分离
-
-- **at.go**: 核心协调和生命周期管理
-- **cmd.go**: 命令执行和响应处理
-- **indication.go**: 异步通知处理
-- **parser.go**: 响应解析逻辑
-- **options.go**: 配置选项系统
-
-#### 错误处理
-
-提供清晰的错误类型和详细的错误信息，便于调试和故障排除。
-
-### 贡献指南
-
-欢迎提交Issue和Pull Request来改进这个包。
-
-### 许可证
-
-[MIT License](LICENSE)
-
 ### 贡献指南
 
 欢迎提交Issue和Pull Request来改进这个包。
@@ -334,3 +312,11 @@ atModem.AddIndication("+CREG:", networkHandler, at.WithTrailingLine)
 [MIT License](LICENSE)
 
 ---
+
+## Acknowledgments
+
+This project is based on the AT command package implementation from [warthog618/modem](https://github.com/warthog618/modem/blob/master/at/at.go).
+
+Special thanks to the original author for the excellent design and implementation, which provided us with a stable and reliable foundation for AT command processing. We have performed modular refactoring and functional enhancements on this basis, but the core design philosophy and architectural ideas all originate from the original project.
+
+**Salute to the original author's open source contribution!** 🙏

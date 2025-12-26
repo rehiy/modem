@@ -83,8 +83,6 @@ Main Methods:
 
 ### Configuration Options
 
-Package provides various configuration options:
-
 #### Constructor Options
 
 - `WithEscTime(d time.Duration) EscTimeOption` - Set escape guard time (default: 20ms)
