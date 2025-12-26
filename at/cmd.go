@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-const (
-	sub = "\x1a"
-	esc = "\x1b"
-)
-
 // response represents the result of a request operation performed on the
 // modem.
 //
@@ -83,16 +78,7 @@ func (a *AT) SMSCommand(cmd string, sms string, options ...CommandOption) (info 
 	}
 }
 
-// issue an escape command
-//
-// This should only be called from within the cmdLoop.
-func (a *AT) escape(b ...byte) {
-	cmd := append([]byte(esc+"\r\n"), b...)
-	a.modem.Write(cmd)
-	a.escGuard = time.NewTimer(a.escTime)
-}
-
-// perform a request  - issuing the command and awaiting the response.
+// processReq performs a request - issuing the command and awaiting the response.
 func (a *AT) processReq(cmd string, timeout time.Duration) (info []string, err error) {
 	a.waitEscGuard()
 	err = a.writeCommand(cmd)
@@ -135,7 +121,7 @@ func (a *AT) processReq(cmd string, timeout time.Duration) (info []string, err e
 	}
 }
 
-// perform a SMS request  - issuing the command, awaiting the prompt, sending
+// processSmsReq performs a SMS request - issuing the command, awaiting the prompt, sending
 // the data and awaiting the response.
 func (a *AT) processSmsReq(cmd string, sms string, timeout time.Duration) (info []string, err error) {
 	a.waitEscGuard()
@@ -229,51 +215,4 @@ func (a *AT) processSmsRxLine(lt rxl, line string, sms string) (info *string, do
 		return a.processRxLine(lt, line)
 	}
 	return
-}
-
-// waitEscGuard waits for a write guard to allow a write to the modem.
-//
-// This should only be called from within the cmdLoop.
-func (a *AT) waitEscGuard() {
-	if a.escGuard == nil {
-		return
-	}
-	defer func() { a.escGuard = nil }()
-	for {
-		select {
-		case _, ok := <-a.cLines:
-			if !ok {
-				a.escGuard.Stop()
-				return
-			}
-		case <-a.escGuard.C:
-			return
-		}
-	}
-}
-
-// writeCommand writes a one line command to the modem.
-//
-// This should only be called from within the cmdLoop.
-func (a *AT) writeCommand(cmd string) error {
-	cmdLine := "AT" + cmd + "\r\n"
-	_, err := a.modem.Write([]byte(cmdLine))
-	return err
-}
-
-// writeSMSCommand writes a the first line of an SMS command to the modem.
-//
-// This should only be called from within the cmdLoop.
-func (a *AT) writeSMSCommand(cmd string) error {
-	cmdLine := "AT" + cmd + "\r"
-	_, err := a.modem.Write([]byte(cmdLine))
-	return err
-}
-
-// writeSMS writes the first line of a two line SMS command to the modem.
-//
-// This should only be called from within the cmdLoop.
-func (a *AT) writeSMS(sms string) error {
-	_, err := a.modem.Write([]byte(sms + string(sub)))
-	return err
 }

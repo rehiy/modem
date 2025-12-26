@@ -91,8 +91,8 @@ func New(modem io.ReadWriter, options ...Option) *AT {
 
 	// Start the pipeline
 	go lineReader(a.modem, a.iLines)
-	go a.indLoop(a.indCh, a.iLines, a.cLines)
 	go cmdLoop(a.cmdCh, a.cLines, a.closed)
+	go a.indLoop(a.indCh, a.iLines, a.cLines)
 
 	return a
 }
