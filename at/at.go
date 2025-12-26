@@ -126,7 +126,8 @@ func lineReader(m io.Reader, out chan string) {
 	for scanner.Scan() {
 		out <- scanner.Text()
 	}
-	close(out) // tell pipeline we're done - end of pipeline will close the AT.
+	// 读取结束，关闭out通道
+	close(out)
 }
 
 // scanLines 是lineReader的自定义行扫描器，识别调制解调器响应SMS命令（如+CMGS）返回的提示
@@ -134,7 +135,7 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	// 处理SMS提示特殊情况 - 提示处无CR
 	if len(data) >= 1 && data[0] == '>' {
 		i := 1
-		// 可能有尾随空格，所以吞噬它...
+		// 清理可能的尾随空格
 		for ; i < len(data) && data[i] == ' '; i++ {
 		}
 		return i, data[0:1], nil
