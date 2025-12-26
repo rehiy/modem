@@ -1,14 +1,9 @@
 package at
 
-// InfoHandler receives indication info.
+// InfoHandler 处理通知信息
 type InfoHandler func([]string)
 
-// Indication represents an unsolicited result code (URC) from the modem, such
-// as a received SMS message.
-//
-// Indications are lines prefixed with a particular pattern, and may include a
-// number of trailing lines. The matching lines are bundled into a slice and
-// sent to the handler.
+// Indication 表示来自调制解调器的非请求结果码，如接收到的SMS消息
 type Indication struct {
 	prefix  string
 	lines   int
@@ -31,32 +26,27 @@ func newIndication(prefix string, handler InfoHandler, options ...IndicationOpti
 	return ind
 }
 
-// IndicationOption alters the behavior of the indication.
+// IndicationOption 修改通知行为
 type IndicationOption interface {
 	applyIndicationOption(*Indication)
 }
 
-// TrailingLinesOption specifies the number of trailing lines expected after an
-// indication line.
+// TrailingLinesOption 指定通知行后的后续行数
 type TrailingLinesOption int
 
 func (o TrailingLinesOption) applyIndicationOption(ind *Indication) {
 	ind.lines = int(o) + 1
 }
 
-// WithTrailingLines indicates the number of lines after the line containing
-// the indication that arew to be collected as part of the indication.
-//
-// The default is 0 - only the indication line itself is collected and returned.
+// WithTrailingLine 包含一行后续行
+var WithTrailingLine = TrailingLinesOption(1)
+
+// WithTrailingLines 设置通知行后的收集行数
 func WithTrailingLines(l int) TrailingLinesOption {
 	return TrailingLinesOption(l)
 }
 
-// WithTrailingLine indicates the indication includes one line after the line
-// containing the indication.
-var WithTrailingLine = TrailingLinesOption(1)
-
-// WithIndication adds an indication during construction.
+// WithIndication 构造时添加通知
 func WithIndication(prefix string, handler InfoHandler, options ...IndicationOption) Indication {
 	return newIndication(prefix, handler, options...)
 }

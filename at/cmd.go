@@ -5,25 +5,13 @@ import (
 	"time"
 )
 
-// response represents the result of a request operation performed on the
-// modem.
-//
-// info is the collection of lines returned between the command and the status
-// line. err corresponds to any error returned by the modem or while
-// interacting with the modem.
+// response 表示在调制解调器上执行的请求操作结果
 type response struct {
-	info []string
-	err  error
+	info []string // 命令和状态行之间返回的行集合
+	err  error    // 调制解调器返回或交互时的错误
 }
 
-// Command issues the command to the modem and returns the result.
-//
-// The command should NOT include the AT prefix, nor <CR><LF> suffix which is
-// automatically added.
-//
-// The return value includes the info (the lines returned by the modem between
-// the command and the status line), or an error if the command did not
-// complete successfully.
+// Command 向调制解调器发送命令并返回结果
 func (a *AT) Command(cmd string, options ...CommandOption) ([]string, error) {
 	cfg := commandConfig{timeout: a.cmdTimeout}
 	for _, option := range options {
@@ -43,22 +31,7 @@ func (a *AT) Command(cmd string, options ...CommandOption) ([]string, error) {
 	}
 }
 
-// SMSCommand issues an SMS command to the modem, and returns the result.
-//
-// An SMS command is issued in two steps; first the command line:
-//
-//	AT<command><CR>
-//
-// which the modem responds to with a ">" prompt, after which the SMS PDU is
-// sent to the modem:
-//
-//	<sms><Ctrl-Z>
-//
-// The modem then completes the command as per other commands, such as those
-// issued by Command.
-//
-// The format of the sms may be a text message or a hex coded SMS PDU,
-// depending on the modem configuration (text or PDU mode).
+// SMSCommand 向调制解调器发送SMS命令并返回结果
 func (a *AT) SMSCommand(cmd string, sms string, options ...CommandOption) (info []string, err error) {
 	cfg := commandConfig{timeout: a.cmdTimeout}
 	for _, option := range options {
@@ -78,7 +51,7 @@ func (a *AT) SMSCommand(cmd string, sms string, options ...CommandOption) (info 
 	}
 }
 
-// processReq performs a request - issuing the command and awaiting the response.
+// processReq 执行请求 - 发送命令并等待响应
 func (a *AT) processReq(cmd string, timeout time.Duration) (info []string, err error) {
 	a.waitEscGuard()
 	err = a.writeCommand(cmd)
@@ -121,8 +94,7 @@ func (a *AT) processReq(cmd string, timeout time.Duration) (info []string, err e
 	}
 }
 
-// processSmsReq performs a SMS request - issuing the command, awaiting the prompt, sending
-// the data and awaiting the response.
+// processSmsReq 执行SMS请求 - 发送命令，等待提示，发送数据并等待响应
 func (a *AT) processSmsReq(cmd string, sms string, timeout time.Duration) (info []string, err error) {
 	a.waitEscGuard()
 	err = a.writeSMSCommand(cmd)
@@ -167,13 +139,7 @@ func (a *AT) processSmsReq(cmd string, sms string, timeout time.Duration) (info 
 	}
 }
 
-// processRxLine parses a line received from the modem and determines how it
-// adds to the response for the current command.
-//
-// The return values are:
-//   - a line of info to be added to the response (optional)
-//   - a flag indicating if the command is complete.
-//   - an error detected while processing the command.
+// processRxLine 解析从调制解调器接收的行并确定如何添加到当前命令的响应中
 func (a *AT) processRxLine(lt rxl, line string) (info *string, done bool, err error) {
 	switch lt {
 	case rxlStatusOK:
@@ -191,13 +157,7 @@ func (a *AT) processRxLine(lt rxl, line string) (info *string, done bool, err er
 	return
 }
 
-// processSmsRxLine parses a line received from the modem and determines how it
-// adds to the response for the current command.
-//
-// The return values are:
-//   - a line of info to be added to the response (optional)
-//   - a flag indicating if the command is complete.
-//   - an error detected while processing the command.
+// processSmsRxLine 解析从调制解调器接收的行并确定如何添加到当前SMS命令的响应中
 func (a *AT) processSmsRxLine(lt rxl, line string, sms string) (info *string, done bool, err error) {
 	switch lt {
 	case rxlUnknown:
@@ -215,4 +175,53 @@ func (a *AT) processSmsRxLine(lt rxl, line string, sms string) (info *string, do
 		return a.processRxLine(lt, line)
 	}
 	return
+}
+
+// 接收行类型
+type rxl int
+
+const (
+	rxlUnknown      rxl = iota // 未知行
+	rxlEchoCmdLine             // 回显命令行
+	rxlInfo                    // 信息行
+	rxlStatusOK                // 状态OK
+	rxlStatusError             // 状态错误
+	rxlAsync                   // 异步行
+	rxlSMSPrompt               // SMS提示
+	rxlConnect                 // 连接
+	rxlConnectError            // 连接错误
+)
+
+// parseCmdID 返回命令的标识符组件，即任何'='或'?'之前的部分
+func parseCmdID(cmdLine string) string {
+	if idx := strings.IndexAny(cmdLine, "=?"); idx != -1 {
+		return cmdLine[0:idx]
+	}
+	return cmdLine
+}
+
+// parseRxLine 解析接收行并识别行类型
+func parseRxLine(line string, cmdID string) rxl {
+	switch {
+	case line == "OK":
+		return rxlStatusOK
+	case strings.HasPrefix(line, "ERROR"), strings.HasPrefix(line, "+CME ERROR:"), strings.HasPrefix(line, "+CMS ERROR:"):
+		return rxlStatusError
+	case strings.HasPrefix(line, cmdID+":"):
+		return rxlInfo
+	case line == ">":
+		return rxlSMSPrompt
+	case strings.HasPrefix(line, "AT"+cmdID):
+		return rxlEchoCmdLine
+	case len(cmdID) == 0 || cmdID[0] != 'D':
+		// 短路非ATD命令，不在此级别识别SMS PDU
+		return rxlUnknown
+	case strings.HasPrefix(line, "CONNECT"):
+		return rxlConnect
+	case line == "BUSY", line == "NO ANSWER", line == "NO CARRIER", line == "NO DIALTONE":
+		return rxlConnectError
+	default:
+		// 不在此级别识别SMS PDU，与其他未识别行一起捕获
+		return rxlUnknown
+	}
 }

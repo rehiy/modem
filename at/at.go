@@ -5,67 +5,43 @@ import (
 	"time"
 )
 
-// AT represents a modem that can be managed using AT commands.
-//
-// Commands can be issued to the modem using the Command and SMSCommand methods.
-//
-// The AT closes the closed channel when the connection to the underlying
-// modem is broken (Read returns EOF).
-//
-// When closed, all outstanding commands return ErrClosed and the state of the
-// underlying modem becomes unknown.
-//
-// Once closed the AT cannot be re-opened - it must be recreated.
+// AT 表示可使用AT命令管理的调制解调器
 type AT struct {
-	// channel for commands issued to the modem
-	//
-	// Handled by the cmdLoop.
+	// 发送给调制解调器的命令通道，由cmdLoop处理
 	cmdCh chan func()
 
-	// channel for changes to inds
-	//
-	// Handled by the indLoop.
+	// 通知变更的通道，由indLoop处理
 	indCh chan func()
 
-	// closed when modem is closed
+	// 调制解调器关闭时关闭的通道
 	closed chan struct{}
 
-	// channel for all lines read from the modem
-	//
-	// Handled by the indLoop.
+	// 从调制解调器读取的所有行的通道，由indLoop处理
 	iLines chan string
 
-	// channel for lines read from the modem after indications removed
-	//
-	// Handled by the cmdLoop.
+	// 移除通知后从调制解调器读取的行通道，由cmdLoop处理
 	cLines chan string
 
-	// the underlying modem
-	//
-	// Only accessed from the cmdLoop.
+	// 底层调制解调器，仅从cmdLoop访问
 	modem io.ReadWriter
 
-	// the minimum time between an escape command and the subsequent command
+	// 转义命令和后续命令之间的最小时间间隔
 	escTime time.Duration
 
-	// time to wait for individual commands to complete
+	// 等待单个命令完成的时间
 	cmdTimeout time.Duration
 
-	// indications mapped by prefix
-	//
-	// Only accessed from the indLoop
+	// 按前缀映射的通知，仅从indLoop访问
 	inds map[string]Indication
 
-	// commands issued by Init.
+	// Init发出的命令
 	initCmds []string
 
-	// if not-nil, the timer that must expire before the subsequent command is issued
-	//
-	// Only accessed from the cmdLoop.
+	// 后续命令发出前必须过期的计时器，仅从cmdLoop访问
 	escGuard *time.Timer
 }
 
-// New creates a new AT modem.
+// New 创建新的AT调制解调器
 func New(modem io.ReadWriter, options ...Option) *AT {
 	a := &AT{
 		modem:      modem,
@@ -79,17 +55,17 @@ func New(modem io.ReadWriter, options ...Option) *AT {
 		inds:       make(map[string]Indication),
 	}
 
-	// Apply Options
+	// 应用选项
 	for _, option := range options {
 		option.applyOption(a)
 	}
 
-	// Set default initCmds
+	// 设置默认初始化命令
 	if a.initCmds == nil {
 		a.initCmds = []string{}
 	}
 
-	// Start the pipeline
+	// 启动管道
 	go lineReader(a.modem, a.iLines)
 	go cmdLoop(a.cmdCh, a.cLines, a.closed)
 	go a.indLoop(a.indCh, a.iLines, a.cLines)
@@ -97,25 +73,19 @@ func New(modem io.ReadWriter, options ...Option) *AT {
 	return a
 }
 
-// Init executes initialization commands to configure the modem.
-//
-// This method sends the initialization command sequence to the modem
-// and verifies that the modem is responding correctly.
-//
-// Returns an error if any initialization command fails or if the modem
-// does not respond within the configured timeout.
+// Init 执行初始化命令配置调制解调器
 func (a *AT) Init(options ...InitOption) error {
 	cfg := initConfig{
 		cmds:    a.initCmds,
 		cmdOpts: []CommandOption{},
 	}
 
-	// Apply InitOptions
+	// 应用初始化选项
 	for _, option := range options {
 		option.applyInitOption(&cfg)
 	}
 
-	// Execute each initialization command
+	// 执行每个初始化命令
 	for _, cmd := range cfg.cmds {
 		_, err := a.Command(cmd, cfg.cmdOpts...)
 		if err != nil {
@@ -126,7 +96,7 @@ func (a *AT) Init(options ...InitOption) error {
 	return nil
 }
 
-// Closed returns a channel which will block while the modem is not closed.
+// Closed 返回一个在调制解调器未关闭时阻塞的通道
 func (a *AT) Closed() <-chan struct{} {
 	return a.closed
 }

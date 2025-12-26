@@ -4,8 +4,7 @@ import (
 	"strings"
 )
 
-// AddIndication adds a handler for a set of lines beginning with the prefixed
-// line and the following trailing lines.
+// AddIndication 添加指定前缀和后续行的处理器
 func (a *AT) AddIndication(prefix string, handler InfoHandler, options ...IndicationOption) (err error) {
 	ind := newIndication(prefix, handler, options...)
 	errs := make(chan error)
@@ -26,10 +25,7 @@ func (a *AT) AddIndication(prefix string, handler InfoHandler, options ...Indica
 	return
 }
 
-// CancelIndication removes any indication corresponding to the prefix.
-//
-// If any such indication exists its return channel is closed and no further
-// indications will be sent to it.
+// CancelIndication 移除指定前缀的通知
 func (a *AT) CancelIndication(prefix string) {
 	done := make(chan struct{})
 	indf := func() {
@@ -43,13 +39,7 @@ func (a *AT) CancelIndication(prefix string) {
 	}
 }
 
-// indLoop is responsible for pulling indications from the stream of lines read
-// from the modem, and forwarding them to handlers.
-//
-// Non-indication lines are passed upstream. Indication trailing lines are
-// assumed to arrive in a contiguous block immediately after the indication.
-//
-// indLoop exits when the in channel closes.
+// indLoop 从调制解调器读取行流并转发给处理器
 func (a *AT) indLoop(cmds chan func(), in <-chan string, out chan string) {
 	defer close(out)
 	for {

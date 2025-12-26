@@ -5,12 +5,7 @@ import (
 	"io"
 )
 
-// cmdLoop is responsible for the interface to the modem.
-//
-// It serialises the issuing of commands and awaits the responses.
-// If no command is pending then any lines received are discarded.
-//
-// The cmdLoop terminates when the downstream closes.
+// cmdLoop 负责与调制解调器的接口，序列化命令发出并等待响应
 func cmdLoop(cmds chan func(), in <-chan string, out chan struct{}) {
 	for {
 		select {
@@ -25,9 +20,7 @@ func cmdLoop(cmds chan func(), in <-chan string, out chan struct{}) {
 	}
 }
 
-// lineReader takes lines from m and redirects them to out.
-//
-// lineReader exits when m closes.
+// lineReader 从m获取行并重定向到out，m关闭时退出
 func lineReader(m io.Reader, out chan string) {
 	scanner := bufio.NewScanner(m)
 	scanner.Split(scanLines)
@@ -37,13 +30,12 @@ func lineReader(m io.Reader, out chan string) {
 	close(out) // tell pipeline we're done - end of pipeline will close the AT.
 }
 
-// scanLines is a custom line scanner for lineReader that recognises the prompt
-// returned by the modem in response to SMS commands such as +CMGS.
+// scanLines 是lineReader的自定义行扫描器，识别调制解调器响应SMS命令（如+CMGS）返回的提示
 func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	// handle SMS prompt special case - no CR at prompt
+	// 处理SMS提示特殊情况 - 提示处无CR
 	if len(data) >= 1 && data[0] == '>' {
 		i := 1
-		// there may be trailing space, so swallow that...
+		// 可能有尾随空格，所以吞噬它...
 		for ; i < len(data) && data[i] == ' '; i++ {
 		}
 		return i, data[0:1], nil

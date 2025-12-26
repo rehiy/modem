@@ -4,55 +4,48 @@ import (
 	"time"
 )
 
-// Option is a construction option for an AT.
+// Option 是AT的构造选项
 type Option interface {
 	applyOption(*AT)
 }
 
-// CommandOption defines a behavioural option for Command and SMSCommand.
+// CommandOption 定义Command和SMSCommand的行为选项
 type CommandOption interface {
 	applyCommandOption(*commandConfig)
 }
 
 type commandConfig struct {
-	timeout time.Duration
+	timeout time.Duration // 命令超时时间
 }
 
-// InitOption defines a behavioural option for Init.
+// InitOption 定义Init的行为选项
 type InitOption interface {
 	applyInitOption(*initConfig)
 }
 
 type initConfig struct {
-	cmds    []string
-	cmdOpts []CommandOption
+	cmds    []string      // 初始化命令列表
+	cmdOpts []CommandOption // 命令选项列表
 }
 
-// WithEscTime sets the guard time for the modem.
-//
-// The escape time is the minimum time between an escape command being sent to
-// the modem and any subsequent commands.
-//
-// The default guard time is 20msec.
+// WithEscTime 设置调制解调器的守卫时间
 func WithEscTime(d time.Duration) EscTimeOption {
 	return EscTimeOption(d)
 }
 
-// EscTimeOption defines the escape guard time for the modem.
+// EscTimeOption 定义调制解调器的转义守卫时间
 type EscTimeOption time.Duration
 
 func (o EscTimeOption) applyOption(a *AT) {
 	a.escTime = time.Duration(o)
 }
 
-// WithCmds specifies the set of AT commands issued by Init.
-//
-// The default commands are ATZ.
+// WithCmds 指定Init发出的AT命令集
 func WithCmds(cmds ...string) CmdsOption {
 	return CmdsOption(cmds)
 }
 
-// CmdsOption specifies the set of AT commands issued by Init.
+// CmdsOption 指定Init发出的AT命令集
 type CmdsOption []string
 
 func (o CmdsOption) applyOption(a *AT) {
@@ -63,14 +56,12 @@ func (o CmdsOption) applyInitOption(i *initConfig) {
 	i.cmds = []string(o)
 }
 
-// WithTimeout specifies the maximum time allowed for the modem to complete a
-// command.
+// WithTimeout 指定调制解调器完成命令的最大允许时间
 func WithTimeout(d time.Duration) TimeoutOption {
 	return TimeoutOption(d)
 }
 
-// TimeoutOption specifies the maximum time allowed for the modem to complete a
-// command.
+// TimeoutOption 指定调制解调器完成命令的最大允许时间
 type TimeoutOption time.Duration
 
 func (o TimeoutOption) applyOption(a *AT) {
