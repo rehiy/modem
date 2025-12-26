@@ -58,7 +58,6 @@ func (a *AT) processReq(cmd string, timeout time.Duration) (info []string, err e
 	if err != nil {
 		return
 	}
-
 	cmdID := parseCmdID(cmd)
 	var expChan <-chan time.Time
 	if timeout >= 0 {
@@ -112,7 +111,7 @@ func (a *AT) processSmsReq(cmd string, sms string, timeout time.Duration) (info 
 		select {
 		case <-expChan:
 			// cancel outstanding SMS request
-			a.escape()
+			a.escapeWrite()
 			err = ErrDeadlineExceeded
 			return
 		case line, ok := <-a.cLines:
@@ -161,21 +160,23 @@ func (a *AT) processRxLine(lt rxl, line string) (info *string, done bool, err er
 func (a *AT) processSmsRxLine(lt rxl, line string, sms string) (info *string, done bool, err error) {
 	switch lt {
 	case rxlUnknown:
-		if strings.HasSuffix(line, sub) && strings.HasPrefix(line, sms) {
+		if strings.HasSuffix(line, "\x1a") && strings.HasPrefix(line, sms) {
 			// swallow echoed SMS PDU
 			return
 		}
 		info = &line
 	case rxlSMSPrompt:
-		if err = a.writeSMS(sms); err != nil {
+		if err = a.writeSMSContent(sms); err != nil {
 			// escape SMS
-			a.escape()
+			a.escapeWrite()
 		}
 	default:
 		return a.processRxLine(lt, line)
 	}
 	return
 }
+
+// ---------------------------------- 辅助函数 ----------------------------------//
 
 // 接收行类型
 type rxl int

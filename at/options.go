@@ -24,7 +24,7 @@ type InitOption interface {
 }
 
 type initConfig struct {
-	cmds    []string      // 初始化命令列表
+	cmds    []string        // 初始化命令列表
 	cmdOpts []CommandOption // 命令选项列表
 }
 
