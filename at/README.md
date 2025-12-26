@@ -49,6 +49,12 @@ func main() {
     // Create AT instance with initialization commands
     atModem := at.New(modem, at.WithCmds("Z", "E0", "+CMEE=1"))
     
+    // Initialize the modem to execute the initialization commands
+    if err := atModem.Init(); err != nil {
+        fmt.Printf("Modem initialization failed: %v\n", err)
+        return
+    }
+    
     // Send AT command
     response, err := atModem.Command("AT+CSQ")
     if err != nil {
@@ -57,6 +63,21 @@ func main() {
     }
     
     fmt.Printf("Signal strength: %s\n", response)
+}
+```
+
+## Initialization
+
+**Important**: The `WithCmds` option in `New()` only sets the initialization commands but does **not** execute them automatically. You must call `Init()` explicitly to execute these commands.
+
+```go
+// This only sets the commands, but doesn't execute them
+atModem := at.New(modem, at.WithCmds("Z", "E0", "+CMEE=1"))
+
+// You must call Init() to actually execute the initialization commands
+err := atModem.Init()
+if err != nil {
+    log.Fatal("Failed to initialize modem:", err)
 }
 ```
 
@@ -75,6 +96,7 @@ type AT struct {
 Main Methods:
 
 - `New(modem io.ReadWriter, options ...Option) *AT` - Create new AT instance
+- `Init(options ...InitOption) error` - Execute initialization commands to configure the modem
 - `Command(cmd string, options ...CommandOption) ([]string, error)` - Execute AT command
 - `SMSCommand(cmd string, sms string, options ...CommandOption) ([]string, error)` - Execute SMS-related commands
 - `AddIndication(prefix string, handler InfoHandler, options ...IndicationOption) error` - Add asynchronous indication handler
@@ -86,7 +108,7 @@ Main Methods:
 #### Constructor Options
 
 - `WithEscTime(d time.Duration) EscTimeOption` - Set escape guard time (default: 20ms)
-- `WithCmds(cmds ...string) CmdsOption` - Set initialization commands (default: ATZ, ATE0)
+- `WithCmds(cmds ...string) CmdsOption` - Set initialization commands (default: none, must be executed via `Init()`)
 - `WithTimeout(d time.Duration) TimeoutOption` - Set command timeout (default: 1s)
 
 #### Command Options

@@ -49,6 +49,12 @@ func main() {
     // 创建AT实例并指定初始化命令
     atModem := at.New(modem, at.WithCmds("Z", "E0", "+CMEE=1"))
     
+    // 初始化调制解调器以执行初始化命令
+    if err := atModem.Init(); err != nil {
+        fmt.Printf("调制解调器初始化失败: %v\n", err)
+        return
+    }
+    
     // 发送AT命令
     response, err := atModem.Command("AT+CSQ")
     if err != nil {
@@ -57,6 +63,21 @@ func main() {
     }
     
     fmt.Printf("信号强度: %s\n", response)
+}
+```
+
+## 初始化
+
+**重要说明**：在 `New()` 中的 `WithCmds` 选项只是设置初始化命令，但**不会**自动执行它们。您必须显式调用 `Init()` 来执行这些命令。
+
+```go
+// 这只是设置命令，但不会执行
+atModem := at.New(modem, at.WithCmds("Z", "E0", "+CMEE=1"))
+
+// 您必须调用 Init() 来实际执行初始化命令
+err := atModem.Init()
+if err != nil {
+    log.Fatal("调制解调器初始化失败:", err)
 }
 ```
 
@@ -86,7 +107,7 @@ type AT struct {
 #### 构造函数选项
 
 - `WithEscTime(d time.Duration) EscTimeOption` - 设置转义保护时间（默认：20ms）
-- `WithCmds(cmds ...string) CmdsOption` - 设置初始化命令（默认：ATZ, ATE0）
+- `WithCmds(cmds ...string) CmdsOption` - 设置初始化命令（默认：无，必须通过 `Init()` 执行）
 - `WithTimeout(d time.Duration) TimeoutOption` - 设置命令超时（默认：1s）
 
 #### 命令选项

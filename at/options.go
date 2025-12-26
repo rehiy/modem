@@ -9,6 +9,15 @@ type Option interface {
 	applyOption(*AT)
 }
 
+// CommandOption defines a behavioural option for Command and SMSCommand.
+type CommandOption interface {
+	applyCommandOption(*commandConfig)
+}
+
+type commandConfig struct {
+	timeout time.Duration
+}
+
 // InitOption defines a behavioural option for Init.
 type InitOption interface {
 	applyInitOption(*initConfig)
@@ -17,15 +26,6 @@ type InitOption interface {
 type initConfig struct {
 	cmds    []string
 	cmdOpts []CommandOption
-}
-
-// CommandOption defines a behavioural option for Command and SMSCommand.
-type CommandOption interface {
-	applyCommandOption(*commandConfig)
-}
-
-type commandConfig struct {
-	timeout time.Duration
 }
 
 // WithEscTime sets the guard time for the modem.
@@ -77,10 +77,10 @@ func (o TimeoutOption) applyOption(a *AT) {
 	a.cmdTimeout = time.Duration(o)
 }
 
-func (o TimeoutOption) applyInitOption(i *initConfig) {
-	i.cmdOpts = append(i.cmdOpts, o)
-}
-
 func (o TimeoutOption) applyCommandOption(c *commandConfig) {
 	c.timeout = time.Duration(o)
+}
+
+func (o TimeoutOption) applyInitOption(i *initConfig) {
+	i.cmdOpts = append(i.cmdOpts, o)
 }

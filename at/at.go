@@ -78,12 +78,18 @@ func New(modem io.ReadWriter, options ...Option) *AT {
 		cmdTimeout: time.Second,
 		inds:       make(map[string]Indication),
 	}
+
+	// Apply Options
 	for _, option := range options {
 		option.applyOption(a)
 	}
+
+	// Set default initCmds
 	if a.initCmds == nil {
 		a.initCmds = []string{}
 	}
+
+	// Start the pipeline
 	go lineReader(a.modem, a.iLines)
 	go a.indLoop(a.indCh, a.iLines, a.cLines)
 	go cmdLoop(a.cmdCh, a.cLines, a.closed)
