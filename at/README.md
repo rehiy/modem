@@ -11,20 +11,6 @@
 - ⚡ **超时控制**：可配置的命令超时机制
 - 🛡️ **连接管理**：自动检测连接状态和错误处理
 
-## 文件结构
-
-```text
-at/
-├── at.go          # 核心结构体和构造函数
-├── cmd.go         # 命令执行相关功能
-├── indication.go  # 异步指示处理
-├── loop.go        # 内部循环处理
-├── options.go     # 配置选项系统
-├── error.go       # 错误类型定义
-├── parser.go      # 命令解析辅助函数
-└── README.md      # 本文档
-```
-
 ## 安装使用
 
 ```go
@@ -298,31 +284,369 @@ atModem.AddIndication("+CREG:", networkHandler, at.WithTrailingLine)
 - **指示前缀**: 精确匹配调制解调器响应前缀
 - **处理器函数**: 接收包含指示行的字符串切片
 
-这份全面的API文档应该帮助用户有效地利用AT命令包进行调制解调器通信任务。
+## 性能指标
 
-### 设计理念
+- **命令响应时间**: 通常在100ms-2s之间，取决于设备类型
+- **并发支持**: 支持多个goroutine同时调用，内部自动序列化
+- **内存使用**: 基础实例约占用2-5MB内存
+- **CPU占用**: 空闲时几乎不占用CPU，命令执行时短暂占用
 
-#### 并发安全
+## 支持的设备
 
-所有对调制解调器的访问都通过通道进行序列化，确保并发安全。
+- 支持标准3GPP TS 27.007 AT命令集
+- 兼容大多数工业级调制解调器模块
+- 支持USB转串口设备（FTDI, CH340, Prolific等）
 
-#### 模块分离
+## 常见问题解答 (FAQ)
 
-- **at.go**: 核心协调和生命周期管理
-- **cmd.go**: 命令执行和响应处理
-- **indication.go**: 异步通知处理
-- **parser.go**: 响应解析逻辑
-- **options.go**: 配置选项系统
+### Q1: 如何选择合适的波特率？
 
-#### 错误处理
+**A**: 不同调制解调器有推荐波特率：
 
-提供清晰的错误类型和详细的错误信息，便于调试和问题排查。
+- **4G模块**: 通常支持115200或更高
+- **3G模块**: 默认115200，部分支持460800
+- **GSM模块**: 常见9600, 19200, 115200
 
-### 设计哲学
+建议查看设备手册，或使用自动检测功能尝试常见波特率。
 
-#### 并发安全性
+### Q2: 为什么AT命令执行超时？
 
-所有调制解调器访问都通过通道进行序列化，确保并发安全。
+**A**: 可能的原因和解决方案：
+
+1. **波特率不匹配** - 尝试不同波特率
+2. **设备未就绪** - 增加初始化等待时间
+3. **命令格式错误** - 确保命令语法正确
+4. **设备故障** - 检查硬件连接和供电
+
+### Q3: 如何处理中文短信乱码？
+
+**A**: 设置正确的字符编码：
+
+```go
+// 设置为UCS2编码（支持中文）
+atModem.Command("+CSCS=\"UCS2\"")
+
+// 或设置为GSM默认编码
+atModem.Command("+CSCS=\"GSM\"")
+```
+
+### Q4: 为什么无法接收短信通知？
+
+**A**: 检查以下设置：
+
+```go
+// 启用新短信通知
+atModem.Command("+CNMI=2,1,0,0,0")
+
+// 设置短信格式为文本模式
+atModem.Command("+CMGF=1")
+```
+
+### Q5: 如何检测设备连接状态？
+
+**A**: 使用连接状态监控：
+
+```go
+// 定期检查连接
+response, err := atModem.Command("")
+if err != nil {
+    log.Println("设备未响应，可能已断开")
+}
+
+// 或监控状态通道
+go func() {
+    <-atModem.Closed()
+    log.Println("设备连接已关闭")
+}()
+```
+
+### Q6: 命令执行频率有限制吗？
+
+**A**: 建议：
+
+- **常规命令**: 间隔至少100ms
+- **SMS命令**: 间隔至少1-2秒
+- **网络命令**: 间隔至少500ms-1秒
+- 避免频繁快速发送命令，可能被设备拒绝
+
+## 故障排除指南
+
+### 连接问题排查
+
+#### 1. 无法连接设备
+
+```bash
+# 检查设备是否可见
+ls -la /dev/ttyUSB* /dev/ttyACM*
+
+# 检查设备权限
+groups $USER | grep dialout
+
+# 测试设备连接（使用minicom或其他终端软件）
+sudo minicom -D /dev/ttyUSB0 -b 115200
+```
+
+#### 2. 设备无响应
+
+```go
+// 基础连接测试
+response, err := atModem.Command("")
+if err != nil {
+    // 尝试重置设备
+    atModem.Command("Z")
+    
+    // 检查波特率
+    time.Sleep(2 * time.Second)
+    response, err = atModem.Command("")
+}
+```
+
+#### 3. 频繁超时错误
+
+```go
+// 增加超时时间
+response, err := atModem.Command("+CGMI", 
+    at.WithTimeout(30*time.Second))
+
+// 检查设备响应速度
+start := time.Now()
+response, err = atModem.Command("I")
+elapsed := time.Since(start)
+log.Printf("命令响应时间: %v", elapsed)
+```
+
+### 命令执行问题
+
+#### 1. ERROR响应
+
+```go
+// 启用详细错误报告
+atModem.Command("+CMEE=2")
+
+// 重新执行命令获取详细错误
+response, err := atModem.Command("+INVALID_COMMAND")
+if cmeErr, ok := err.(*at.CMEError); ok {
+    log.Printf("CME错误: %d - %s", cmeErr.Code, cmeErr.Message)
+}
+```
+
+#### 2. 命令无返回
+
+```go
+// 检查回显设置
+response, err := atModem.Command("E0") // 禁用回显
+
+// 设置更长的等待时间
+response, err = atModem.Command("+CGSN", 
+    at.WithTimeout(10*time.Second))
+```
+
+### 短信功能问题
+
+#### 1. 无法发送短信
+
+```go
+// 检查短信中心号码
+response, err := atModem.Command("+CSCA?")
+
+// 设置短信格式
+atModem.Command("+CMGF=1") // 文本模式
+
+// 检查网络注册状态
+response, err = atModem.Command("+CREG?")
+```
+
+#### 2. 无法接收短信
+
+```go
+// 配置新短信通知
+atModem.Command("+CNMI=2,1,0,0,0")
+
+// 检查短信存储
+response, err := atModem.Command("+CPMS?")
+
+// 设置存储到SIM卡
+atModem.Command("+CPMS=\"SM\",\"SM\",\"SM\"")
+```
+
+### 网络问题
+
+#### 1. 网络注册失败
+
+```go
+// 检查网络注册状态
+response, err := atModem.Command("+CREG?")
+if strings.Contains(strings.Join(response, ""), "0,1") {
+    log.Println("已注册到本地网络")
+}
+
+// 手动搜索网络
+response, err = atModem.Command("+COPS=?")
+
+// 设置运营商
+atModem.Command("+COPS=1,0,\"China Mobile\"")
+```
+
+#### 2. 信号质量差
+
+```go
+// 检查信号质量
+response, err := atModem.Command("+CSQ")
+// 响应格式: +CSQ: <rssi>,<ber>
+// rssi: 0-31 (值越大信号越好)
+// ber: 0-7 (值越小误码率越低)
+
+// 如果信号差，尝试：
+// 1. 移动到信号好的位置
+// 2. 使用外置天线
+// 3. 检查天线连接
+```
+
+## 调试技巧
+
+### 启用详细日志
+
+```go
+// 启用调制解调器详细错误
+atModem.Command("+CMEE=2")
+
+// 记录所有命令和响应
+logCommand := func(cmd string) {
+    log.Printf("发送命令: AT%s", cmd)
+}
+
+response, err := atModem.Command("+CSQ")
+log.Printf("响应: %v", response)
+```
+
+### 性能分析
+
+```go
+// 批量命令测试
+start := time.Now()
+for i := 0; i < 10; i++ {
+    _, err := atModem.Command("+CSQ")
+    if err != nil {
+        log.Printf("第%d次命令失败: %v", i+1, err)
+    }
+    time.Sleep(100 * time.Millisecond)
+}
+log.Printf("10次命令耗时: %v", time.Since(start))
+```
+
+### 内存泄漏检测
+
+```go
+// 定期检查连接状态
+go func() {
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+    
+    for {
+        select {
+        case <-ticker.C:
+            select {
+            case <-atModem.Closed():
+                log.Println("检测到连接关闭")
+                return
+            default:
+                _, err := atModem.Command("")
+                if err != nil {
+                    log.Printf("心跳检测失败: %v", err)
+                }
+            }
+        case <-atModem.Closed():
+            return
+        }
+    }
+}()
+```
+
+## 最佳实践
+
+### 资源管理
+
+```go
+defer func() {
+    // 确保连接正确关闭
+    if atModem != nil {
+        atModem.Close()
+    }
+}()
+```
+
+### 错误重试
+
+```go
+func executeWithRetry(atModem *at.AT, cmd string, maxRetries int) ([]string, error) {
+    var lastErr error
+    
+    for i := 0; i < maxRetries; i++ {
+        response, err := atModem.Command(cmd)
+        if err == nil {
+            return response, nil
+        }
+        
+        lastErr = err
+        log.Printf("命令执行失败(第%d次): %v", i+1, err)
+        
+        // 指数退避
+        time.Sleep(time.Duration(math.Pow(2, float64(i))) * time.Second)
+    }
+    
+    return nil, lastErr
+}
+```
+
+### 状态监控
+
+```go
+type ModemStatus struct {
+    Connected    bool
+    SignalLevel  int
+    NetworkReg   bool
+    LastActivity time.Time
+    mu           sync.RWMutex
+}
+
+func monitorModemStatus(atModem *at.AT, status *ModemStatus) {
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+    
+    for {
+        select {
+        case <-ticker.C:
+            // 检查信号
+            if response, err := atModem.Command("+CSQ"); err == nil {
+                if len(response) > 0 {
+                    if parsed := parseCSQ(response[0]); parsed != -1 {
+                        status.mu.Lock()
+                        status.SignalLevel = parsed
+                        status.LastActivity = time.Now()
+                        status.mu.Unlock()
+                    }
+                }
+            }
+            
+            // 检查网络注册
+            if response, err := atModem.Command("+CREG?"); err == nil {
+                registered := strings.Contains(strings.Join(response, ""), ",1")
+                status.mu.Lock()
+                status.NetworkReg = registered
+                status.mu.Unlock()
+            }
+            
+        case <-atModem.Closed():
+            status.mu.Lock()
+            status.Connected = false
+            status.mu.Unlock()
+            return
+        }
+    }
+}
+```
+
+通过以上内容，开发者可以更好地使用AT命令包，快速定位和解决常见问题。
 
 ### 贡献指南
 
