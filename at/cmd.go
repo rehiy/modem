@@ -58,7 +58,7 @@ func (a *AT) processReq(cmd string, timeout time.Duration) (info []string, err e
 	if err != nil {
 		return
 	}
-	cmdID := parseCmdID(cmd)
+	cmdk := parseCmdk(cmd)
 	var expChan <-chan time.Time
 	if timeout >= 0 {
 		expiry := time.NewTimer(timeout)
@@ -77,7 +77,7 @@ func (a *AT) processReq(cmd string, timeout time.Duration) (info []string, err e
 			if line == "" {
 				continue
 			}
-			lt := parseRxLine(line, cmdID)
+			lt := parseRxLine(line, cmdk)
 			i, done, perr := a.processRxLine(lt, line)
 			if i != nil {
 				info = append(info, *i)
@@ -100,7 +100,7 @@ func (a *AT) processSmsReq(cmd string, sms string, timeout time.Duration) (info 
 	if err != nil {
 		return
 	}
-	cmdID := parseCmdID(cmd)
+	cmdk := parseCmdk(cmd)
 	var expChan <-chan time.Time
 	if timeout >= 0 {
 		expiry := time.NewTimer(timeout)
@@ -122,7 +122,7 @@ func (a *AT) processSmsReq(cmd string, sms string, timeout time.Duration) (info 
 			if line == "" {
 				continue
 			}
-			lt := parseRxLine(line, cmdID)
+			lt := parseRxLine(line, cmdk)
 			i, done, perr := a.processSmsRxLine(lt, line, sms)
 			if i != nil {
 				info = append(info, *i)
@@ -193,8 +193,8 @@ const (
 	rxlConnectError            // 连接错误
 )
 
-// parseCmdID 返回命令的标识符组件，即任何'='或'?'之前的部分
-func parseCmdID(cmdLine string) string {
+// parseCmdk 返回命令的标识符组件，即任何'='或'?'之前的部分
+func parseCmdk(cmdLine string) string {
 	if idx := strings.IndexAny(cmdLine, "=?"); idx != -1 {
 		return cmdLine[0:idx]
 	}
@@ -202,19 +202,19 @@ func parseCmdID(cmdLine string) string {
 }
 
 // parseRxLine 解析接收行并识别行类型
-func parseRxLine(line string, cmdID string) rxl {
+func parseRxLine(line string, cmdk string) rxl {
 	switch {
 	case line == "OK":
 		return rxlStatusOK
 	case strings.HasPrefix(line, "ERROR"), strings.HasPrefix(line, "+CME ERROR:"), strings.HasPrefix(line, "+CMS ERROR:"):
 		return rxlStatusError
-	case strings.HasPrefix(line, cmdID+":"):
+	case strings.HasPrefix(line, cmdk+":"):
 		return rxlInfo
 	case line == ">":
 		return rxlSMSPrompt
-	case strings.HasPrefix(line, "AT"+cmdID):
+	case strings.HasPrefix(line, "AT"+cmdk):
 		return rxlEchoCmdLine
-	case len(cmdID) == 0 || cmdID[0] != 'D':
+	case len(cmdk) == 0 || cmdk[0] != 'D':
 		// 短路非ATD命令，不在此级别识别SMS PDU
 		return rxlUnknown
 	case strings.HasPrefix(line, "CONNECT"):

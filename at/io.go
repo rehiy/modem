@@ -8,28 +8,25 @@ import (
 )
 
 func (a *AT) writeString(cmd string) (int, error) {
-	logrus.Debugf("<< writeString: %s", cmd)
+	logrus.Debugf("<< TX: %s", cmd)
 	return a.modem.Write([]byte(cmd))
 }
 
 // writeCommand 向调制解调器写入单行命令
 func (a *AT) writeCommand(cmd string) error {
-	cmdLine := "AT" + cmd + "\r\n"
-	_, err := a.writeString(cmdLine)
+	_, err := a.writeString("AT" + cmd + "\r\n")
 	return err
 }
 
 // writeSMSCommand 向调制解调器写入SMS命令的第一行
 func (a *AT) writeSMSCommand(cmd string) error {
-	cmdLine := "AT" + cmd + "\r"
-	_, err := a.writeString(cmdLine)
+	_, err := a.writeString("AT" + cmd + "\r")
 	return err
 }
 
 // writeSMSContent 向调制解调器写入两行SMS命令的第二行
 func (a *AT) writeSMSContent(sms string) error {
-	txtLine := sms + "\x1a"
-	_, err := a.writeString(txtLine)
+	_, err := a.writeString(sms + "\x1a")
 	return err
 }
 
@@ -77,12 +74,12 @@ func (a *AT) readLoop() {
 	// 读取行并发送到iLines通道
 	for scanner.Scan() {
 		line := scanner.Text()
-		logrus.Debugf(">> readLine: %s", line)
+		logrus.Debugf(">> RX: %d bytes", len(line))
 		a.iLines <- line
 	}
 	// 检查扫描错误
 	if err := scanner.Err(); err != nil {
-		logrus.Debugf(">> scanner error: %v", err)
+		logrus.Debugf("<> ERR: %v", err)
 	}
 	// 关闭iLines通道
 	close(a.iLines)

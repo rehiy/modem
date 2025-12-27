@@ -30,6 +30,7 @@ func (a *AT) indLoop() {
 					continue
 				}
 			}
+			// 未处理的行发送到cLines
 			a.cLines <- line
 		}
 	}
