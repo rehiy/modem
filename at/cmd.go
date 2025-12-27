@@ -111,7 +111,7 @@ func (a *AT) processSmsReq(cmd string, sms string, timeout time.Duration) (info 
 		select {
 		case <-expChan:
 			// cancel outstanding SMS request
-			a.escapeWrite()
+			a.writeEscape()
 			err = ErrDeadlineExceeded
 			return
 		case line, ok := <-a.cLines:
@@ -168,7 +168,7 @@ func (a *AT) processSmsRxLine(lt rxl, line string, sms string) (info *string, do
 	case rxlSMSPrompt:
 		if err = a.writeSMSContent(sms); err != nil {
 			// escape SMS
-			a.escapeWrite()
+			a.writeEscape()
 		}
 	default:
 		return a.processRxLine(lt, line)

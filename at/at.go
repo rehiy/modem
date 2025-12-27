@@ -64,7 +64,7 @@ func New(modem io.ReadWriter, options ...Option) *AT {
 	// 启动管道
 	go a.cmdLoop()
 	go a.indLoop()
-	go a.lineReader()
+	go a.readLoop()
 
 	return a
 }
