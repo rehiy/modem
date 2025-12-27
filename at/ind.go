@@ -4,6 +4,37 @@ import (
 	"strings"
 )
 
+// indLoop 从调制解调器读取行流并转发给处理器
+func (a *AT) indLoop() {
+	defer close(a.cLines)
+	for {
+		select {
+		case cmd := <-a.indCh:
+			cmd()
+		case line, ok := <-a.iLines:
+			if !ok {
+				return
+			}
+			for prefix, ind := range a.inds {
+				if strings.HasPrefix(line, prefix) {
+					n := make([]string, ind.lines)
+					n[0] = line
+					for i := 1; i < ind.lines; i++ {
+						t, ok := <-a.iLines
+						if !ok {
+							return
+						}
+						n[i] = t
+					}
+					go ind.handler(n)
+					continue
+				}
+			}
+			a.cLines <- line
+		}
+	}
+}
+
 // AddIndication 添加指定前缀和后续行的处理器
 func (a *AT) AddIndication(prefix string, handler InfoHandler, options ...IndicationOption) (err error) {
 	ind := newIndication(prefix, handler, options...)
@@ -36,37 +67,6 @@ func (a *AT) CancelIndication(prefix string) {
 	case <-a.closed:
 	case a.indCh <- indf:
 		<-done
-	}
-}
-
-// indLoop 从调制解调器读取行流并转发给处理器
-func (a *AT) indLoop(cmds chan func(), in <-chan string, out chan string) {
-	defer close(out)
-	for {
-		select {
-		case cmd := <-cmds:
-			cmd()
-		case line, ok := <-in:
-			if !ok {
-				return
-			}
-			for prefix, ind := range a.inds {
-				if strings.HasPrefix(line, prefix) {
-					n := make([]string, ind.lines)
-					n[0] = line
-					for i := 1; i < ind.lines; i++ {
-						t, ok := <-in
-						if !ok {
-							return
-						}
-						n[i] = t
-					}
-					go ind.handler(n)
-					continue
-				}
-			}
-			out <- line
-		}
 	}
 }
 
