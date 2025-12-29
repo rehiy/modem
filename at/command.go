@@ -1,7 +1,6 @@
 package at
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -90,40 +89,40 @@ func DefaultCommandSet() CommandSet {
 // ===== 基本命令 =====
 
 // Test 测试连接
-func (m *Connection) Test(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.Test, "OK")
+func (m *Device) Test() error {
+	return m.SendCommandExpect(m.commands.Test, "OK")
 }
 
 // EchoOff 关闭回显
-func (m *Connection) EchoOff(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.EchoOff, "OK")
+func (m *Device) EchoOff() error {
+	return m.SendCommandExpect(m.commands.EchoOff, "OK")
 }
 
 // EchoOn 开启回显
-func (m *Connection) EchoOn(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.EchoOn, "OK")
+func (m *Device) EchoOn() error {
+	return m.SendCommandExpect(m.commands.EchoOn, "OK")
 }
 
 // Reset 重启模块
-func (m *Connection) Reset(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.Reset, "OK")
+func (m *Device) Reset() error {
+	return m.SendCommandExpect(m.commands.Reset, "OK")
 }
 
 // FactoryReset 恢复出厂设置
-func (m *Connection) FactoryReset(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.FactoryReset, "OK")
+func (m *Device) FactoryReset() error {
+	return m.SendCommandExpect(m.commands.FactoryReset, "OK")
 }
 
 // SaveSettings 保存设置
-func (m *Connection) SaveSettings(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.SaveSettings, "OK")
+func (m *Device) SaveSettings() error {
+	return m.SendCommandExpect(m.commands.SaveSettings, "OK")
 }
 
 // ===== 信息查询 =====
 
-// querySimpleInfo 通用简单信息查询函数
-func (m *Connection) querySimpleInfo(ctx context.Context, command string) (string, error) {
-	responses, err := m.SendCommand(ctx, command)
+// SmpleQuery 通用简单信息查询函数
+func (m *Device) SmpleQuery(command string) (string, error) {
+	responses, err := m.SendCommand(command)
 	if err != nil {
 		return "", err
 	}
@@ -139,40 +138,40 @@ func (m *Connection) querySimpleInfo(ctx context.Context, command string) (strin
 }
 
 // GetManufacturer 查询制造商信息
-func (m *Connection) GetManufacturer(ctx context.Context) (string, error) {
-	return m.querySimpleInfo(ctx, m.commands.Manufacturer)
+func (m *Device) GetManufacturer() (string, error) {
+	return m.SmpleQuery(m.commands.Manufacturer)
 }
 
 // GetModel 查询型号信息
-func (m *Connection) GetModel(ctx context.Context) (string, error) {
-	return m.querySimpleInfo(ctx, m.commands.Model)
+func (m *Device) GetModel() (string, error) {
+	return m.SmpleQuery(m.commands.Model)
 }
 
 // GetRevision 查询版本信息
-func (m *Connection) GetRevision(ctx context.Context) (string, error) {
-	return m.querySimpleInfo(ctx, m.commands.Revision)
+func (m *Device) GetRevision() (string, error) {
+	return m.SmpleQuery(m.commands.Revision)
 }
 
 // GetSerialNumber 查询序列号
-func (m *Connection) GetSerialNumber(ctx context.Context) (string, error) {
-	return m.querySimpleInfo(ctx, m.commands.SerialNumber)
+func (m *Device) GetSerialNumber() (string, error) {
+	return m.SmpleQuery(m.commands.SerialNumber)
 }
 
 // GetIMSI 查询IMSI信息
-func (m *Connection) GetIMSI(ctx context.Context) (string, error) {
-	return m.querySimpleInfo(ctx, m.commands.IMSI)
+func (m *Device) GetIMSI() (string, error) {
+	return m.SmpleQuery(m.commands.IMSI)
 }
 
 // GetICCID 查询ICCID信息
-func (m *Connection) GetICCID(ctx context.Context) (string, error) {
-	return m.querySimpleInfo(ctx, m.commands.ICCID)
+func (m *Device) GetICCID() (string, error) {
+	return m.SmpleQuery(m.commands.ICCID)
 }
 
 // ===== 信号质量 =====
 
 // GetSignalQuality 查询信号质量
-func (m *Connection) GetSignalQuality(ctx context.Context) (int, int, error) {
-	responses, err := m.SendCommand(ctx, m.commands.SignalQuality)
+func (m *Device) GetSignalQuality() (int, int, error) {
+	responses, err := m.SendCommand(m.commands.SignalQuality)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -194,8 +193,8 @@ func (m *Connection) GetSignalQuality(ctx context.Context) (int, int, error) {
 // ===== 网络注册 =====
 
 // GetNetworkStatus 查询网络注册状态
-func (m *Connection) GetNetworkStatus(ctx context.Context) (int, int, error) {
-	responses, err := m.SendCommand(ctx, m.commands.NetworkRegistration+"?")
+func (m *Device) GetNetworkStatus() (int, int, error) {
+	responses, err := m.SendCommand(m.commands.NetworkRegistration + "?")
 	if err != nil {
 		return 0, 0, err
 	}
@@ -215,8 +214,8 @@ func (m *Connection) GetNetworkStatus(ctx context.Context) (int, int, error) {
 }
 
 // GetGPRSStatus 查询GPRS注册状态
-func (m *Connection) GetGPRSStatus(ctx context.Context) (int, int, error) {
-	responses, err := m.SendCommand(ctx, m.commands.GPRSRegistration+"?")
+func (m *Device) GetGPRSStatus() (int, int, error) {
+	responses, err := m.SendCommand(m.commands.GPRSRegistration + "?")
 	if err != nil {
 		return 0, 0, err
 	}
@@ -238,23 +237,23 @@ func (m *Connection) GetGPRSStatus(ctx context.Context) (int, int, error) {
 // ===== 通话相关 =====
 
 // Dial 拨打电话
-func (m *Connection) Dial(ctx context.Context, number string) error {
-	return m.SendCommandExpect(ctx, m.commands.Dial+number, "OK")
+func (m *Device) Dial(number string) error {
+	return m.SendCommandExpect(m.commands.Dial+number, "OK")
 }
 
 // Answer 接听电话
-func (m *Connection) Answer(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.Answer, "OK")
+func (m *Device) Answer() error {
+	return m.SendCommandExpect(m.commands.Answer, "OK")
 }
 
 // Hangup 挂断电话
-func (m *Connection) Hangup(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.Hangup, "OK")
+func (m *Device) Hangup() error {
+	return m.SendCommandExpect(m.commands.Hangup, "OK")
 }
 
 // GetCallerID 获取来电显示状态
-func (m *Connection) GetCallerID(ctx context.Context) (bool, error) {
-	responses, err := m.SendCommand(ctx, m.commands.CallerID+"?")
+func (m *Device) GetCallerID() (bool, error) {
+	responses, err := m.SendCommand(m.commands.CallerID + "?")
 	if err != nil {
 		return false, err
 	}
@@ -273,14 +272,14 @@ func (m *Connection) GetCallerID(ctx context.Context) (bool, error) {
 }
 
 // SetCallerID 设置来电显示
-func (m *Connection) SetCallerID(ctx context.Context, enable bool) error {
+func (m *Device) SetCallerID(enable bool) error {
 	command := m.commands.CallerID
 	if enable {
 		command += "=1"
 	} else {
 		command += "=0"
 	}
-	return m.SendCommandExpect(ctx, command, "OK")
+	return m.SendCommandExpect(command, "OK")
 }
 
 // ===== 辅助工具 =====

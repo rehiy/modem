@@ -1,7 +1,6 @@
 package at
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -34,17 +33,17 @@ const (
 )
 
 // SetSMSFormatText 设置短信格式为文本模式
-func (m *Connection) SetSMSFormatText(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.SMSFormat+"=1", "OK")
+func (m *Device) SetSMSFormatText() error {
+	return m.SendCommandExpect(m.commands.SMSFormat+"=1", "OK")
 }
 
 // SetSMSFormatPDU 设置短信格式为 PDU 模式
-func (m *Connection) SetSMSFormatPDU(ctx context.Context) error {
-	return m.SendCommandExpect(ctx, m.commands.SMSFormat+"=0", "OK")
+func (m *Device) SetSMSFormatPDU() error {
+	return m.SendCommandExpect(m.commands.SMSFormat+"=0", "OK")
 }
 
 // SendSMSText 发送文本短信（自动处理中文和长短信）
-func (m *Connection) SendSMSText(ctx context.Context, phoneNumber, message string) error {
+func (m *Device) SendSMSText(phoneNumber, message string) error {
 	// 检查是否包含中文或其他非ASCII字符
 	needsUCS2 := needsUCS2Encoding(message)
 
@@ -56,33 +55,33 @@ func (m *Connection) SendSMSText(ctx context.Context, phoneNumber, message strin
 
 	// 如果消息长度超过限制，使用PDU模式发送长短信
 	if len([]rune(message)) > maxLength {
-		return m.sendLongSMS(ctx, phoneNumber, message, needsUCS2)
+		return m.sendLongSMS(phoneNumber, message, needsUCS2)
 	}
 
 	// 发送单条短信
 	if needsUCS2 {
 		// 使用PDU模式发送中文短信
-		return m.sendUCS2SMS(ctx, phoneNumber, message)
+		return m.sendUCS2SMS(phoneNumber, message)
 	}
 
 	// 发送普通文本短信
-	return m.sendSimpleTextSMS(ctx, phoneNumber, message)
+	return m.sendSimpleTextSMS(phoneNumber, message)
 }
 
 // SendSMSPDU 发送PDU格式短信
-func (m *Connection) SendSMSPDU(ctx context.Context, pduData string, length int) error {
+func (m *Device) SendSMSPDU(pduData string, length int) error {
 	// 发送命令：AT+CMGS=length
 	cmd := fmt.Sprintf("%s=%d", m.commands.SendSMS, length)
 	fullCommand := cmd + "\r\n"
 
-	return m.sendSMSCommand(ctx, fullCommand, pduData)
+	return m.sendSMSCommand(fullCommand, pduData)
 }
 
 // ListSMS 列出所有短信
-func (m *Connection) ListSMS(ctx context.Context, status string) ([]SMS, error) {
+func (m *Device) ListSMS(status string) ([]SMS, error) {
 	// status: "ALL", "REC UNREAD", "REC READ", "STO UNSENT", "STO SENT"
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.ListSMS, status)
-	responses, err := m.SendCommand(ctx, cmd)
+	responses, err := m.SendCommand(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -91,9 +90,9 @@ func (m *Connection) ListSMS(ctx context.Context, status string) ([]SMS, error) 
 }
 
 // ReadSMS 读取指定索引的短信
-func (m *Connection) ReadSMS(ctx context.Context, index int) (*SMS, error) {
+func (m *Device) ReadSMS(index int) (*SMS, error) {
 	cmd := fmt.Sprintf("%s=%d", m.commands.ReadSMS, index)
-	responses, err := m.SendCommand(ctx, cmd)
+	responses, err := m.SendCommand(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -107,20 +106,20 @@ func (m *Connection) ReadSMS(ctx context.Context, index int) (*SMS, error) {
 }
 
 // DeleteSMS 删除指定索引的短信
-func (m *Connection) DeleteSMS(ctx context.Context, index int) error {
+func (m *Device) DeleteSMS(index int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.DeleteSMS, index)
-	return m.SendCommandExpect(ctx, cmd, "OK")
+	return m.SendCommandExpect(cmd, "OK")
 }
 
 // DeleteAllSMS 删除所有短信
-func (m *Connection) DeleteAllSMS(ctx context.Context) error {
+func (m *Device) DeleteAllSMS() error {
 	// AT+CMGD=1,4 删除所有短信
 	cmd := fmt.Sprintf("%s=1,4", m.commands.DeleteSMS)
-	return m.SendCommandExpect(ctx, cmd, "OK")
+	return m.SendCommandExpect(cmd, "OK")
 }
 
 // sendSMSCommand 通用的短信发送辅助函数
-func (m *Connection) sendSMSCommand(ctx context.Context, command string, data string) error {
+func (m *Device) sendSMSCommand(command string, data string) error {
 	// 写入命令
 	if err := m.writeString(command); err != nil {
 		return fmt.Errorf("failed to write SMS command: %w", err)
@@ -133,7 +132,7 @@ func (m *Connection) sendSMSCommand(ctx context.Context, command string, data st
 	}
 
 	// 读取响应
-	responses, err := m.readResponse(ctx)
+	responses, err := m.readResponse()
 	if err != nil {
 		return fmt.Errorf("failed to read SMS response: %w", err)
 	}
@@ -154,7 +153,7 @@ func (m *Connection) sendSMSCommand(ctx context.Context, command string, data st
 }
 
 // sendSimpleTextSMS 发送简单文本短信（仅ASCII字符）
-func (m *Connection) sendSimpleTextSMS(ctx context.Context, phoneNumber, message string) error {
+func (m *Device) sendSimpleTextSMS(phoneNumber, message string) error {
 	// 发送命令：AT+CMGS="phoneNumber"
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SendSMS, phoneNumber)
 	fullCommand := cmd + "\r\n"
@@ -162,11 +161,11 @@ func (m *Connection) sendSimpleTextSMS(ctx context.Context, phoneNumber, message
 	// 等待 '>' 提示符
 	// TODO: 实际应用中应该等待并检查 '>' 提示符
 
-	return m.sendSMSCommand(ctx, fullCommand, message)
+	return m.sendSMSCommand(fullCommand, message)
 }
 
 // sendUCS2SMS 发送UCS2编码的短信（支持中文）
-func (m *Connection) sendUCS2SMS(ctx context.Context, phoneNumber, message string) error {
+func (m *Device) sendUCS2SMS(phoneNumber, message string) error {
 	// 编码为UCS2
 	ucs2Data := encodeUCS2(message)
 
@@ -174,11 +173,11 @@ func (m *Connection) sendUCS2SMS(ctx context.Context, phoneNumber, message strin
 	pdu, length := buildPDU(phoneNumber, ucs2Data, 0, 0, 0)
 
 	// 发送PDU短信
-	return m.SendSMSPDU(ctx, pdu, length)
+	return m.SendSMSPDU(pdu, length)
 }
 
 // sendLongSMS 发送长短信（自动分段）
-func (m *Connection) sendLongSMS(ctx context.Context, phoneNumber, message string, useUCS2 bool) error {
+func (m *Device) sendLongSMS(phoneNumber, message string, useUCS2 bool) error {
 	// 生成长短信参考号（简单使用当前时间的低8位）
 	// 实际应用中可以使用更复杂的算法
 	reference := uint8(len(message) % 256)
@@ -225,7 +224,7 @@ func (m *Connection) sendLongSMS(ctx context.Context, phoneNumber, message strin
 			pdu, length = buildPDU(phoneNumber, segment, reference, totalSegments, sequence)
 		}
 
-		if err := m.SendSMSPDU(ctx, pdu, length); err != nil {
+		if err := m.SendSMSPDU(pdu, length); err != nil {
 			return fmt.Errorf("failed to send segment %d/%d: %w", sequence, totalSegments, err)
 		}
 	}

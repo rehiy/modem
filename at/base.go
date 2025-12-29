@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -25,8 +26,8 @@ type Config struct {
 	ResponseSet     *ResponseSet     // 自定义响应类型集，如果为 nil 则使用默认响应集
 }
 
-// Modem 连接实现
-type Connection struct {
+// Modem 连接
+type Device struct {
 	port          *serial.Port
 	config        Config
 	commands      CommandSet      // 使用的 AT 命令集
@@ -42,8 +43,10 @@ type Connection struct {
 	mu           sync.Mutex          // 保护命令发送的互斥锁
 }
 
-// newConnection 创建一个新的 AT 连接
-func newConnection(config Config) (AT, error) {
+type NotificationHandler func(notification string)
+
+// New 创建一个新的 AT 连接
+func New(config Config) (*Device, error) {
 	port, err := serial.OpenPort(&serial.Config{
 		Name:        config.PortName,
 		Baud:        config.BaudRate,
@@ -73,7 +76,7 @@ func newConnection(config Config) (AT, error) {
 		responses = *config.ResponseSet
 	}
 
-	conn := &Connection{
+	dev := &Device{
 		port:          port,
 		config:        config,
 		commands:      commands,
@@ -84,18 +87,18 @@ func newConnection(config Config) (AT, error) {
 	}
 
 	// 启动统一读取循环
-	go conn.readLoop()
+	go dev.readLoop()
 
-	return conn, nil
+	return dev, nil
 }
 
-// IsConnected 检查连接状态
-func (m *Connection) IsConnected() bool {
+// IsLive 检查连接状态
+func (m *Device) IsLive() bool {
 	return !m.isClosed.Load()
 }
 
 // Close 关闭连接
-func (m *Connection) Close() error {
+func (m *Device) Close() error {
 	if m.isClosed.Swap(true) {
 		return nil // 已经关闭过了
 	}
@@ -106,8 +109,64 @@ func (m *Connection) Close() error {
 	return m.port.Close()
 }
 
+// SendCommand 发送 AT 命令并等待响应
+func (m *Device) SendCommand(command string) ([]string, error) {
+	if m.isClosed.Load() {
+		return nil, ErrDeviceClosed
+	}
+
+	// 添加回车换行符并写入命令
+	if err := m.writeString(command + "\r\n"); err != nil {
+		return nil, err
+	}
+
+	return m.readResponse()
+}
+
+// SendCommandExpect 发送 AT 命令并期望特定响应
+func (m *Device) SendCommandExpect(command string, expected string) error {
+	responses, err := m.SendCommand(command)
+	if err != nil {
+		return err
+	}
+
+	// 检查是否包含期望的响应
+	for _, response := range responses {
+		if strings.Contains(response, expected) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("expected response %q not found in %v", expected, responses)
+}
+
+// ListenNotifications 注册 modem 通知处理器
+func (m *Device) ListenNotifications(handler NotificationHandler) (error, context.CancelFunc) {
+	if m.isClosed.Load() {
+		return ErrDeviceClosed, nil
+	}
+
+	// 注册通知处理器
+	m.urcMu.Lock()
+	m.urcHandler = handler
+	m.urcMu.Unlock()
+
+	// 监听上下文取消，取消时移除处理器
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-ctx.Done()
+		m.urcMu.Lock()
+		m.urcHandler = nil
+		m.urcMu.Unlock()
+	}()
+
+	return nil, cancel
+}
+
+// ===== 原生读写 =====
+
 // readLoop 从串口读取数据并分发
-func (m *Connection) readLoop() {
+func (m *Device) readLoop() {
 	for !m.isClosed.Load() {
 		line, err := m.reader.ReadString('\n')
 		if err != nil {
@@ -142,15 +201,16 @@ func (m *Connection) readLoop() {
 			case m.responseChan <- line:
 			default:
 				// 通道满了，丢弃数据（避免阻塞）
+				log.Printf("discarding data: %s", line)
 			}
 		}
 	}
 }
 
 // writeString 写入数据到串口
-func (m *Connection) writeString(data string) error {
+func (m *Device) writeString(data string) error {
 	if m.isClosed.Load() {
-		return ErrConnectionClosed
+		return ErrDeviceClosed
 	}
 
 	// 防止并发写
@@ -169,59 +229,6 @@ func (m *Connection) writeString(data string) error {
 	if n != len(data) {
 		return fmt.Errorf("incomplete write: wrote %d of %d bytes", n, len(data))
 	}
-
-	return nil
-}
-
-// SendCommand 发送 AT 命令并等待响应
-func (m *Connection) SendCommand(ctx context.Context, command string) ([]string, error) {
-	if m.isClosed.Load() {
-		return nil, ErrConnectionClosed
-	}
-
-	// 添加回车换行符并写入命令
-	if err := m.writeString(command + "\r\n"); err != nil {
-		return nil, err
-	}
-
-	return m.readResponse(ctx)
-}
-
-// SendCommandExpect 发送 AT 命令并期望特定响应
-func (m *Connection) SendCommandExpect(ctx context.Context, command string, expected string) error {
-	responses, err := m.SendCommand(ctx, command)
-	if err != nil {
-		return err
-	}
-
-	// 检查是否包含期望的响应
-	for _, response := range responses {
-		if strings.Contains(response, expected) {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("expected response %q not found in %v", expected, responses)
-}
-
-// ListenNotifications 注册 modem 通知处理器
-func (m *Connection) ListenNotifications(ctx context.Context, handler NotificationHandler) error {
-	if m.isClosed.Load() {
-		return ErrConnectionClosed
-	}
-
-	// 注册通知处理器
-	m.urcMu.Lock()
-	m.urcHandler = handler
-	m.urcMu.Unlock()
-
-	// 监听上下文取消，取消时移除处理器
-	go func() {
-		<-ctx.Done()
-		m.urcMu.Lock()
-		m.urcHandler = nil
-		m.urcMu.Unlock()
-	}()
 
 	return nil
 }

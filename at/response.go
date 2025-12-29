@@ -1,8 +1,30 @@
 package at
 
 import (
-	"context"
+	"errors"
 	"strings"
+)
+
+// 错误定义
+var (
+	// 连接相关错误
+	ErrDeviceClosed      = errors.New("device is closed")
+	ErrPortNotAvailable  = errors.New("serial port not available")
+	ErrInvalidPortConfig = errors.New("invalid port configuration")
+
+	// 命令相关错误
+	ErrCommandTimeout     = errors.New("command timeout")
+	ErrInvalidCommand     = errors.New("invalid AT command")
+	ErrUnexpectedResponse = errors.New("unexpected response from modem")
+
+	// 响应相关错误
+	ErrNoResponse    = errors.New("no response from modem")
+	ErrResponseParse = errors.New("failed to parse response")
+	ErrResponseError = errors.New("modem returned error response")
+
+	// 通知相关错误
+	ErrNotificationFailed = errors.New("notification listening failed")
+	ErrHandlerNotSet      = errors.New("notification handler not set")
 )
 
 // ResponseSet 定义可配置的命令响应类型集合
@@ -83,27 +105,17 @@ func (rs *ResponseSet) IsError(line string) bool {
 }
 
 // readResponse 从响应通道读取响应
-func (m *Connection) readResponse(ctx context.Context) ([]string, error) {
+func (m *Device) readResponse() ([]string, error) {
 	var responses []string
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case line, ok := <-m.responseChan:
-			if !ok {
-				// 通道已关闭
-				return responses, ErrConnectionClosed
-			}
-
-			// 检查是否为最终响应
-			if m.responses.IsFinalResponse(line) {
-				responses = append(responses, line)
-				return responses, nil
-			}
-
-			// 添加中间响应
+	for line := range m.responseChan {
+		if m.responses.IsFinalResponse(line) {
 			responses = append(responses, line)
+			return responses, nil
 		}
+		responses = append(responses, line)
 	}
+
+	// 如果跳出循环，说明通道已关闭
+	return responses, ErrDeviceClosed
 }
