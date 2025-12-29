@@ -3,6 +3,7 @@ package at
 import (
 	"errors"
 	"strings"
+	"time"
 )
 
 // 错误定义
@@ -107,15 +108,22 @@ func (rs *ResponseSet) IsError(line string) bool {
 // readResponse 从响应通道读取响应
 func (m *Device) readResponse() ([]string, error) {
 	var responses []string
+	timeout := time.After(m.config.ReadTimeout)
 
-	for line := range m.responseChan {
-		if m.responses.IsFinalResponse(line) {
+	for {
+		select {
+		case line, ok := <-m.responseChan:
+			if !ok {
+				return responses, ErrDeviceClosed
+			}
+
 			responses = append(responses, line)
-			return responses, nil
-		}
-		responses = append(responses, line)
-	}
+			if m.responses.IsFinalResponse(line) {
+				return responses, nil
+			}
 
-	// 如果跳出循环，说明通道已关闭
-	return responses, ErrDeviceClosed
+		case <-timeout:
+			return responses, ErrCommandTimeout
+		}
+	}
 }
