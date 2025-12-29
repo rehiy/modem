@@ -16,11 +16,11 @@ import (
 // Modem 配置
 type Config struct {
 	// 串口参数
-	PortName string        // 串口名称，如 '/dev/ttyUSB0' 或 'COM3'
-	BaudRate int           // 波特率，如 115200
-	Timeout  time.Duration // 超时时间
-	Parity   byte          // 校验位，如 'N', 'E', 'O'
-	StopBits byte          // 停止位，如 1, 2
+	PortName    string        // 串口名称，如 '/dev/ttyUSB0' 或 'COM3'
+	BaudRate    int           // 波特率，如 115200
+	ReadTimeout time.Duration // 超时时间
+	Parity      byte          // 校验位，如 'N', 'E', 'O'
+	StopBits    byte          // 停止位，如 1, 2
 	// 设备参数
 	CommandSet      *CommandSet      // 自定义 AT 命令集，如果为 nil 则使用默认命令集
 	ResponseSet     *ResponseSet     // 自定义响应类型集，如果为 nil 则使用默认响应集
@@ -48,13 +48,16 @@ func New(config Config) (*Device, error) {
 	port, err := serial.OpenPort(&serial.Config{
 		Name:        config.PortName,
 		Baud:        config.BaudRate,
-		ReadTimeout: config.Timeout,
+		ReadTimeout: config.ReadTimeout,
 		Parity:      serial.Parity(config.Parity),
 		StopBits:    serial.StopBits(config.StopBits),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open serial port: %w", err)
 	}
+
+	// timeout 需要大于 100ms
+	timeout := config.ReadTimeout + 100*time.Millisecond
 
 	// 如果没有指定命令集，使用默认命令集
 	commands := DefaultCommandSet()
@@ -76,7 +79,7 @@ func New(config Config) (*Device, error) {
 
 	dev := &Device{
 		port:          port,
-		timeout:       config.Timeout + 100*time.Millisecond,
+		timeout:       timeout,
 		commands:      commands,
 		notifications: notifications,
 		responses:     responses,
