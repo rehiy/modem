@@ -3,6 +3,7 @@ package at
 import (
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf16"
 )
@@ -70,16 +71,13 @@ func (m *Device) SendSMSText(phoneNumber, message string) error {
 
 // SendSMSPDU 发送PDU格式短信
 func (m *Device) SendSMSPDU(pduData string, length int) error {
-	// 发送命令：AT+CMGS=length
 	cmd := fmt.Sprintf("%s=%d", m.commands.SendSMS, length)
-	fullCommand := cmd + "\r\n"
-
-	return m.sendSMSCommand(fullCommand, pduData)
+	return m.sendSMSCommand(cmd, pduData)
 }
 
 // ListSMS 列出所有短信
+// status: "ALL", "REC UNREAD", "REC READ", "STO UNSENT", "STO SENT"
 func (m *Device) ListSMS(status string) ([]SMS, error) {
-	// status: "ALL", "REC UNREAD", "REC READ", "STO UNSENT", "STO SENT"
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.ListSMS, status)
 	responses, err := m.SendCommand(cmd)
 	if err != nil {
@@ -120,8 +118,8 @@ func (m *Device) DeleteAllSMS() error {
 
 // sendSMSCommand 通用的短信发送辅助函数
 func (m *Device) sendSMSCommand(command string, data string) error {
-	// 写入命令
-	if err := m.writeString(command); err != nil {
+	// 等待 '>' 提示符
+	if err := m.SendCommandExpect(command, ">"); err != nil {
 		return fmt.Errorf("failed to write SMS command: %w", err)
 	}
 
@@ -138,13 +136,7 @@ func (m *Device) sendSMSCommand(command string, data string) error {
 	}
 
 	// 检查是否成功
-	hasSuccess := false
-	for _, resp := range responses {
-		if m.responses.IsSuccess(resp) {
-			hasSuccess = true
-			break
-		}
-	}
+	hasSuccess := slices.ContainsFunc(responses, m.responses.IsSuccess)
 	if !hasSuccess {
 		return fmt.Errorf("SMS send failed: %v", responses)
 	}
@@ -156,23 +148,13 @@ func (m *Device) sendSMSCommand(command string, data string) error {
 func (m *Device) sendSimpleTextSMS(phoneNumber, message string) error {
 	// 发送命令：AT+CMGS="phoneNumber"
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SendSMS, phoneNumber)
-	fullCommand := cmd + "\r\n"
-
-	// 等待 '>' 提示符
-	// TODO: 实际应用中应该等待并检查 '>' 提示符
-
-	return m.sendSMSCommand(fullCommand, message)
+	return m.sendSMSCommand(cmd, message)
 }
 
 // sendUCS2SMS 发送UCS2编码的短信（支持中文）
 func (m *Device) sendUCS2SMS(phoneNumber, message string) error {
-	// 编码为UCS2
 	ucs2Data := encodeUCS2(message)
-
-	// 构建PDU数据
 	pdu, length := buildPDU(phoneNumber, ucs2Data, 0, 0, 0)
-
-	// 发送PDU短信
 	return m.SendSMSPDU(pdu, length)
 }
 
