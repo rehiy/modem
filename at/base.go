@@ -3,6 +3,7 @@ package at
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"strings"
 	"sync"
@@ -20,7 +21,6 @@ type Port interface {
 
 // 配置参数
 type Config struct {
-	Name            string               // 设备名称
 	Timeout         time.Duration        // 超时时间
 	CommandSet      *CommandSet          // 自定义 AT 命令集，如果为 nil 则使用默认命令集
 	ResponseSet     *ResponseSet         // 自定义响应类型集，如果为 nil 则使用默认响应集
@@ -48,9 +48,6 @@ func New(port Port, handler func(string), config *Config) (*Device, error) {
 	if config == nil {
 		config = &Config{}
 	}
-	if config.Name == "" {
-		config.Name = "unknown"
-	}
 	if config.Timeout == 0 {
 		config.Timeout = 200 * time.Millisecond
 	}
@@ -69,7 +66,6 @@ func New(port Port, handler func(string), config *Config) (*Device, error) {
 
 	dev := &Device{
 		port:          port,
-		name:          config.Name,
 		timeout:       config.Timeout,
 		commands:      *config.CommandSet,
 		responses:     *config.ResponseSet,
@@ -92,7 +88,7 @@ func (m *Device) IsOpen() bool {
 
 // Close 关闭连接
 func (m *Device) Close() error {
-	m.printf("[%s] closing device", m.name)
+	m.printf("closing device")
 
 	if m.closed.Swap(true) {
 		return nil // 已经关闭过了
@@ -107,7 +103,7 @@ func (m *Device) Close() error {
 // SendCommand 发送 AT 命令并等待响应
 func (m *Device) SendCommand(command string) ([]string, error) {
 	if m.closed.Load() {
-		return nil, fmt.Errorf("[%s] device closed", m.name)
+		return nil, fmt.Errorf("device closed")
 	}
 
 	// 添加回车换行符并写入命令
@@ -170,8 +166,10 @@ func (m *Device) readLoop() {
 
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			m.printf("[%s] read error: %v", m.name, err)
-			time.Sleep(m.timeout)
+			if err != io.EOF {
+				m.printf("read error: %v", err)
+			}
+			time.Sleep(m.timeout / 2)
 			continue
 		}
 
@@ -202,7 +200,7 @@ func (m *Device) readLoop() {
 // writeString 写入数据到串口
 func (m *Device) writeString(data string) error {
 	if m.closed.Load() {
-		return fmt.Errorf("device is closed")
+		return fmt.Errorf("device closed")
 	}
 
 	// 防止并发写
