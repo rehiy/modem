@@ -26,10 +26,8 @@ type CommandSet struct {
 	PhoneNumber  string // 查询手机号
 	Operator     string // 查询运营商
 
-	// 信号质量
-	SignalQuality string // 查询信号质量
-
-	// 网络注册
+	// 网络信号
+	SignalQuality       string // 查询信号质量
 	NetworkRegistration string // 网络注册状态
 	GPRSRegistration    string // GPRS 注册状态
 
@@ -68,10 +66,8 @@ func DefaultCommandSet() *CommandSet {
 		PhoneNumber:  "AT+CNUM",
 		Operator:     "AT+COPS",
 
-		// 信号质量
-		SignalQuality: "AT+CSQ",
-
-		// 网络注册
+		// 网络信号
+		SignalQuality:       "AT+CSQ",
 		NetworkRegistration: "AT+CREG",
 		GPRSRegistration:    "AT+CGREG",
 
@@ -138,7 +134,7 @@ func (m *Device) SmpleQuery(command string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no info found for command: %s", command)
+	return "", fmt.Errorf("no info found for %s", command)
 }
 
 // GetManufacturer 查询制造商信息
@@ -218,7 +214,7 @@ func (m *Device) GetOperator() (int, string, string, error) {
 	return 0, "", "", fmt.Errorf("failed to parse operator info")
 }
 
-// ===== 信号质量 =====
+// ===== 网络信号 =====
 
 // GetSignalQuality 查询信号质量
 func (m *Device) GetSignalQuality() (int, int, error) {
@@ -240,8 +236,6 @@ func (m *Device) GetSignalQuality() (int, int, error) {
 
 	return 0, 0, fmt.Errorf("failed to parse signal quality")
 }
-
-// ===== 网络注册 =====
 
 // GetNetworkStatus 查询网络注册状态
 func (m *Device) GetNetworkStatus() (int, int, error) {
