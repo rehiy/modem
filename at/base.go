@@ -76,6 +76,7 @@ func New(port Port, handler func(string), config *Config) (*Device, error) {
 		responseChan:  make(chan string, 100),
 		notifications: *config.NotificationSet,
 		urcHandler:    handler,
+		printf:        config.Printf,
 	}
 
 	// 开始读取循环
