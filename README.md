@@ -115,7 +115,7 @@ type CommandSet struct {
  // 基本命令
  Test, EchoOff, EchoOn, Reset, FactoryReset, SaveSettings string
  // 信息查询
- Manufacturer, Model, Revision, SerialNumber, IMSI, ICCID string
+ Manufacturer, Model, Revision, SerialNumber, IMSI, ICCID, PhoneNumber, Operator string
  // 信号质量
  SignalQuality string
  // 网络注册
@@ -184,6 +184,13 @@ revision, _ := device.GetRevision()
 serial, _ := device.GetSerialNumber()
 imsi, _ := device.GetIMSI()
 iccid, _ := device.GetICCID()
+phoneNumber, _ := device.GetPhoneNumber()
+// 查询运营商信息
+// 返回 (mode, operator, format, error)
+// mode: 网络选择模式 0-4
+// operator: 运营商名称（如 "China Mobile"）
+// format: 格式编号
+mode, operator, format, _ := device.GetOperator()
 ```
 
 ### 信号和网络

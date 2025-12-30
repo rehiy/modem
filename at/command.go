@@ -23,6 +23,8 @@ type CommandSet struct {
 	SerialNumber string // 查询序列号
 	IMSI         string // 查询 IMSI
 	ICCID        string // 查询 ICCID
+	PhoneNumber  string // 查询手机号
+	Operator     string // 查询运营商
 
 	// 信号质量
 	SignalQuality string // 查询信号质量
@@ -63,6 +65,8 @@ func DefaultCommandSet() *CommandSet {
 		SerialNumber: "AT+CGSN",
 		IMSI:         "AT+CIMI",
 		ICCID:        "AT+CCID",
+		PhoneNumber:  "AT+CNUM",
+		Operator:     "AT+COPS",
 
 		// 信号质量
 		SignalQuality: "AT+CSQ",
@@ -165,6 +169,53 @@ func (m *Device) GetIMSI() (string, error) {
 // GetICCID 查询ICCID信息
 func (m *Device) GetICCID() (string, error) {
 	return m.SmpleQuery(m.commands.ICCID)
+}
+
+// GetPhoneNumber 查询手机号
+func (m *Device) GetPhoneNumber() (string, error) {
+	responses, err := m.SendCommand(m.commands.PhoneNumber)
+	if err != nil {
+		return "", err
+	}
+
+	for _, resp := range responses {
+		if cnumData, ok := strings.CutPrefix(resp, "+CNUM:"); ok {
+			// 格式: +CNUM: ,"+8613800138000",129
+			parts := strings.Split(cnumData, ",")
+			if len(parts) >= 2 {
+				// 提取引号中的手机号
+				number := strings.Trim(parts[1], `"'`)
+				if number != "" {
+					return number, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no phone number found")
+}
+
+// GetOperator 查询运营商信息
+func (m *Device) GetOperator() (int, string, string, error) {
+	responses, err := m.SendCommand(m.commands.Operator + "?")
+	if err != nil {
+		return 0, "", "", err
+	}
+
+	for _, resp := range responses {
+		if copsData, ok := strings.CutPrefix(resp, "+COPS:"); ok {
+			// 格式: +COPS: 0,0,"China Mobile",7
+			parts := strings.Split(copsData, ",")
+			if len(parts) >= 3 {
+				mode := parseInt(parts[0])
+				format := parseInt(strings.Trim(parts[1], `"'`))
+				operator := strings.Trim(parts[2], `"'`)
+				return mode, operator, fmt.Sprintf("%d", format), nil
+			}
+		}
+	}
+
+	return 0, "", "", fmt.Errorf("failed to parse operator info")
 }
 
 // ===== 信号质量 =====
