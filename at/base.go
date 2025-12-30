@@ -9,72 +9,54 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/tarm/serial"
 )
 
-// Modem 配置
+// 串口
+type Port interface {
+	Read(buf []byte) (int, error)
+	Write(data []byte) (int, error)
+	Flush() error
+	Close() error
+}
+
+// 配置参数
 type Config struct {
-	// 串口参数
-	PortName    string        // 串口名称，如 '/dev/ttyUSB0' 或 'COM3'
-	BaudRate    int           // 波特率，如 115200
-	ReadTimeout time.Duration // 超时时间
-	Parity      byte          // 校验位，如 'N', 'E', 'O'
-	StopBits    byte          // 停止位，如 1, 2
-	// 设备参数
+	Timeout         time.Duration    // 超时时间
 	CommandSet      *CommandSet      // 自定义 AT 命令集，如果为 nil 则使用默认命令集
 	ResponseSet     *ResponseSet     // 自定义响应类型集，如果为 nil 则使用默认响应集
 	NotificationSet *NotificationSet // 自定义通知类型集，如果为 nil 则使用默认通知集
-	Notification    func(s string)   // 通知处理函数
 }
 
-// Modem 连接
+// 设备连接
 type Device struct {
-	port    *serial.Port  // 串口连接
-	timeout time.Duration // 超时时间
-
+	port          Port            // 串口连接
+	timeout       time.Duration   // 超时时间
 	commands      CommandSet      // 使用的 AT 命令集
 	notifications NotificationSet // 使用的通知类型集
 	responses     ResponseSet     // 使用的响应类型集
-
-	responseChan chan string    // 命令响应通道
-	urcHandler   func(s string) // 通知处理函数
-	isClosed     atomic.Bool    // 连接是否已关闭（原子操作保证并发安全）
-	mu           sync.Mutex     // 保护命令发送的互斥锁
+	responseChan  chan string     // 命令响应通道
+	urcHandler    func(string)    // 通知处理函数
+	isClosed      atomic.Bool     // 连接是否已关闭（原子操作保证并发安全）
+	mu            sync.Mutex      // 保护命令发送的互斥锁
 }
 
-// New 创建一个新的 AT 连接
-func New(config Config) (*Device, error) {
-	port, err := serial.OpenPort(&serial.Config{
-		Name:        config.PortName,
-		Baud:        config.BaudRate,
-		ReadTimeout: config.ReadTimeout,
-		Parity:      serial.Parity(config.Parity),
-		StopBits:    serial.StopBits(config.StopBits),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to open serial port: %w", err)
-	}
+// New 创建一个新的设备连接实例
+func New(port Port, handler func(string), config *Config) (*Device, error) {
+	timeout := max(config.Timeout, 200*time.Millisecond)
 
-	// timeout 需要大于 100ms
-	timeout := config.ReadTimeout + 100*time.Millisecond
-
-	// 如果没有指定命令集，使用默认命令集
 	commands := DefaultCommandSet()
 	if config.CommandSet != nil {
 		commands = *config.CommandSet
 	}
 
-	// 如果没有指定通知集，使用默认通知集
-	notifications := DefaultNotificationSet()
-	if config.NotificationSet != nil {
-		notifications = *config.NotificationSet
-	}
-
-	// 如果没有指定响应集，使用默认响应集
 	responses := DefaultResponseSet()
 	if config.ResponseSet != nil {
 		responses = *config.ResponseSet
+	}
+
+	notifications := DefaultNotificationSet()
+	if config.NotificationSet != nil {
+		notifications = *config.NotificationSet
 	}
 
 	dev := &Device{
@@ -83,7 +65,8 @@ func New(config Config) (*Device, error) {
 		commands:      commands,
 		notifications: notifications,
 		responses:     responses,
-		responseChan:  make(chan string, 100), // 带缓冲的通道
+		responseChan:  make(chan string, 100),
+		urcHandler:    handler,
 	}
 
 	// 启动统一读取循环
@@ -181,7 +164,7 @@ func (m *Device) readLoop() {
 				return
 			}
 			// 其他错误，继续监听
-			time.Sleep(time.Second)
+			time.Sleep(m.timeout)
 			continue
 		}
 
@@ -219,7 +202,8 @@ func (m *Device) writeString(data string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// 清空响应通道中的旧数据
+	// 刷新缓冲区
+	m.port.Flush()
 	for len(m.responseChan) > 0 {
 		<-m.responseChan
 	}
