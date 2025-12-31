@@ -395,8 +395,9 @@ func TestUDHParseForConcatenatedSMS(t *testing.T) {
 	}
 
 	// 确保文本解码成功
-	if msg.Text == "" {
-		t.Error("解码文本为空")
+	expectedText := "nitor usage, manage spending, switch notifications on/off or turn roaming off in your account: giff.ly/dashboard\n\nCheers. Safe travels."
+	if msg.Text != expectedText {
+		t.Errorf("解码文本不匹配: 得到 %q, 期望 %q", msg.Text, expectedText)
 	}
 }
 
