@@ -86,10 +86,10 @@ func pack7Bit(septets []byte) []byte {
 
 	packed := make([]byte, 0, (len(septets)*7+7)/8)
 	bits := uint(0)
-	buffer := uint16(0)
+	buffer := uint32(0)
 
 	for _, septet := range septets {
-		buffer |= uint16(septet) << bits
+		buffer |= uint32(septet) << bits
 		bits += 7
 
 		for bits >= 8 {
@@ -115,10 +115,10 @@ func unpack7Bit(data []byte, length int) []byte {
 
 	septets := make([]byte, 0, length)
 	bits := uint(0)
-	buffer := uint16(0)
+	buffer := uint32(0)
 
 	for _, b := range data {
-		buffer |= uint16(b) << bits
+		buffer |= uint32(b) << bits
 		bits += 8
 
 		for bits >= 7 && len(septets) < length {

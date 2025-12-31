@@ -373,6 +373,33 @@ func TestConcatManagerSingleMessage(t *testing.T) {
 	}
 }
 
+// TestUDHParseForConcatenatedSMS 测试长短信UDH解析
+func TestUDHParseForConcatenatedSMS(t *testing.T) {
+	// 这是一个真实的包含UDH的长短信PDU（第4部分，共4部分）
+	pduStr := "0791448720006260400ED0E7B4D97C0E9BCD0000522140601451008E050003890404DC69FA5B0EAACFC3E7320BD40EBBC3E732680E2FBBC969F799059ADFD3F4311AE47ED3D3E6F4384C4FBFDD73D0DBFD7A9BCDA0B71C44AFCBDD20F93BDC4EBBCFA0B7D90C4ABB41F9775D0E0A8FC7EFBA9BAE039DD366B38B9D7F91C373B4F81D9693158A21BA5C96CF5DA069D85C06D1E5617B993D7701"
+
+	msg, err := Decode(pduStr)
+	if err != nil {
+		t.Fatalf("解码失败: %v", err)
+	}
+
+	// 验证UDH解析正确性
+	if msg.Reference != 0x89 {
+		t.Errorf("Reference错误: 期望 0x89, 得到 0x%02X", msg.Reference)
+	}
+	if msg.Parts != 4 {
+		t.Errorf("Parts错误: 期望 4, 得到 %d", msg.Parts)
+	}
+	if msg.Part != 4 {
+		t.Errorf("Part错误: 期望 4, 得到 %d", msg.Part)
+	}
+
+	// 确保文本解码成功
+	if msg.Text == "" {
+		t.Error("解码文本为空")
+	}
+}
+
 // TestValidatePhoneNumber 测试电话号码验证
 func TestValidatePhoneNumber(t *testing.T) {
 	tests := []struct {

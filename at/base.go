@@ -237,7 +237,7 @@ func (m *Device) writeString(data string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.printf("write str: %s", data)
+	m.printf("write cmd: %s", data)
 
 	// 向串口写入数据
 	n, err := m.port.Write([]byte(data))
