@@ -37,18 +37,15 @@ func main() {
  defer port.Close()
 
  // 配置通知处理函数
- urcHandler := func(notification string) {
-  log.Printf("通知: %s", notification)
+ urcHandler := func(label string, param map[int]string) {
+  log.Printf("通知: %s %v", label, param)
  }
 
  // 创建设备
  config := &at.Config{
   Timeout: 5 * time.Second,
  }
- device, err := at.New(port, urcHandler, config)
- if err != nil {
-  log.Fatal(err)
- }
+ device := at.New(port, urcHandler, config)
  defer device.Close()
 
  // 测试连接
@@ -82,7 +79,7 @@ type Port interface {
 
 ```go
 // 创建设备连接
-func New(port Port, handler func(string), config *Config) (*Device, error)
+func New(port Port, handler UrcHandler, config *Config) *Device
 
 // 连接管理
 func (m *Device) IsOpen() bool
@@ -99,10 +96,11 @@ func (m *Device) SendCommandExpect(cmd, expected string) error
 
 ```go
 type Config struct {
- Timeout         time.Duration    // 超时时间（默认 200ms）
- CommandSet      *CommandSet      // 自定义 AT 命令集
- ResponseSet     *ResponseSet     // 自定义响应类型集
- NotificationSet *NotificationSet // 自定义通知类型集
+ Timeout         time.Duration        // 超时时间（默认 1秒）
+ CommandSet      *CommandSet          // 自定义 AT 命令集
+ ResponseSet     *ResponseSet         // 自定义响应类型集
+ NotificationSet *NotificationSet     // 自定义通知类型集
+ Printf          func(string, ...any) // 日志输出函数，如果为 nil 则使用 log.Printf
 }
 ```
 
@@ -231,12 +229,9 @@ device.SetCallerID(true)
 ### 短信发送
 
 ```go
-// 发送文本短信（自动处理中文和长短信）
-device.SendSMSText("+8613800138000", "Hello from Go!")
-device.SendSMSText("+8613800138000", "你好，这是一条中文短信！")
-
-// 发送 PDU 格式短信
-device.SendSMSPDU(pduData, length)
+// 发送短信（自动处理中文和长短信）
+device.SendSMS("+8613800138000", "Hello from Go!")
+device.SendSMS("+8613800138000", "你好，这是一条中文短信！")
 ```
 
 **自动编码处理：**
@@ -248,21 +243,14 @@ device.SendSMSPDU(pduData, length)
 ### 短信管理
 
 ```go
-// 设置短信格式
-device.SetSMSFormatText() // 文本模式
-device.SetSMSFormatPDU()  // PDU 模式
-
 // 列出短信
-// status: "ALL", "REC UNREAD", "REC READ", "STO UNSENT", "STO SENT"
-list, _ := device.ListSMS("ALL")
-
-// 读取短信
-sms, _ := device.ReadSMS(1) // 按索引读取
-fmt.Printf("来自: %s\n内容: %s\n", sms.PhoneNumber, sms.Message)
+list, _ := device.ListSMS()
+for _, sms := range list {
+    fmt.Printf("来自: %s\n内容: %s\n", sms.PhoneNumber, sms.Message)
+}
 
 // 删除短信
-device.DeleteSMS(1)      // 删除指定索引
-device.DeleteAllSMS()    // 删除所有短信
+device.DeleteSMS(1) // 删除指定索引
 ```
 
 ### SMS 结构
@@ -344,8 +332,9 @@ config := &at.Config{
    - 其他数据写入响应通道
 
 2. **命令发送** (`SendCommand`):
+   - 清空响应通道，避免收到残留响应
+   - 检查命令是否包含结束符，自动添加默认结束符 `\r\n`
    - 加互斥锁（防止并发写）
-   - 刷新缓冲区并清空响应通道
    - 发送命令并等待最终响应
 
 3. **响应读取** (`readResponse`):
@@ -356,6 +345,7 @@ config := &at.Config{
 ### 并发安全
 
 - `closed`: 使用 `atomic.Bool` 保证原子操作
+- `wg`: 使用 `sync.WaitGroup` 等待 goroutine 退出
 - `mu`: 互斥锁保护命令发送
 - 响应通道: 带缓冲的通道（容量 100）
 
