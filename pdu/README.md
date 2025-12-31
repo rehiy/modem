@@ -156,23 +156,6 @@ func main() {
 - ✅ 状态报告请求
 - ✅ 有效期设置
 
-## 📊 性能
-
-**性能基准测试结果**：
-
-```text
-BenchmarkEncode7Bit-8     325450    3567 ns/op
-BenchmarkDecode7Bit-8    1312405     933 ns/op
-BenchmarkEncodeUCS2-8    5753632     213 ns/op
-BenchmarkDecodeUCS2-8   15265221      77 ns/op
-```
-
-运行基准测试：
-
-```bash
-go test -bench=. -benchmem ./pdu/
-```
-
 ## 🧪 测试
 
 ```bash
