@@ -42,23 +42,24 @@ func Decode(pduStr string) (*Message, error) {
 	offset += 2
 
 	msgType := MessageTypeSMSDeliver
-	if pduType&0x03 == 0x01 {
+	switch pduType & 0x03 {
+	case 0x01:
 		msgType = MessageTypeSMSSubmit
-	} else if pduType&0x03 == 0x02 {
+	case 0x02:
 		msgType = MessageTypeSMSStatusReport
 	}
 
 	hasUDH := (pduType & 0x40) != 0
 	hasVP := (pduType & 0x10) != 0
-
 	msg := &Message{
 		Type: msgType,
 		SMSC: smsc,
 	}
 
-	if msgType == MessageTypeSMSDeliver {
+	switch msgType {
+	case MessageTypeSMSDeliver:
 		return decodeDeliver(pduStr[offset:], hasUDH, msg)
-	} else if msgType == MessageTypeSMSSubmit {
+	case MessageTypeSMSSubmit:
 		return decodeSubmit(pduStr[offset:], hasUDH, hasVP, msg)
 	}
 
