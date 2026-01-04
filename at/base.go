@@ -118,6 +118,10 @@ func (m *Device) SendCommand(cmd string) ([]string, error) {
 		return nil, fmt.Errorf("device closed")
 	}
 
+	// 加锁保护
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	// 清空响应通道，避免收到残留响应
 	for len(m.responseChan) > 0 {
 		<-m.responseChan
@@ -238,10 +242,6 @@ func (m *Device) writeString(data string) error {
 	if m.closed.Load() {
 		return fmt.Errorf("device closed")
 	}
-
-	// 防止并发写
-	m.mu.Lock()
-	defer m.mu.Unlock()
 
 	m.printf("write cmd: %s", data)
 
