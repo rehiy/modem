@@ -113,12 +113,18 @@ func (ns *NotificationSet) GetAllNotifications() []string {
 	}
 }
 
-// IsNotification 检查是否为通知消息
-func (ns *NotificationSet) IsNotification(line string) bool {
-	for _, notification := range ns.GetAllNotifications() {
-		if notification != "" && strings.HasPrefix(line, notification) {
-			return true
+// IsNotification 检查给定行是否为URC
+func (ns *NotificationSet) IsNotification(line, cmd string) bool {
+	urc := ""
+	for _, item := range ns.GetAllNotifications() {
+		if item != "" && strings.HasPrefix(line, item) {
+			urc = item
+			break
 		}
 	}
-	return false
+	if cmd != "" && urc != "" {
+		urc = "AT" + strings.TrimSuffix(urc, ":")
+		return !strings.HasPrefix(cmd, urc)
+	}
+	return urc != ""
 }

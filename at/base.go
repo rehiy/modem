@@ -50,6 +50,7 @@ type Device struct {
 	urcHandler    UrcHandler           // 通知处理函数
 	printf        func(string, ...any) // 日志输出函数
 	closed        atomic.Bool          // 连接是否已关闭（原子操作保证并发安全）
+	cmd           atomic.Value         // 当前正在执行的命令
 	mu            sync.Mutex           // 保护命令发送的互斥锁
 }
 
@@ -134,6 +135,10 @@ func (m *Device) SendCommand(cmd string) ([]string, error) {
 		cmd = cmd + Terminators[0]
 	}
 
+	// 记录正在执行的命令
+	m.cmd.Store(cmd)
+	defer m.cmd.Store("")
+
 	// 向串口写入命令
 	if err := m.writeString(cmd); err != nil {
 		return nil, err
@@ -210,7 +215,8 @@ func (m *Device) readAndDispatch() {
 		m.printf("read line: %s", line)
 
 		// 处理通知消息
-		if m.notifications.IsNotification(line) {
+		cmd := m.cmd.Load().(string)
+		if m.notifications.IsNotification(line, cmd) {
 			if m.urcHandler != nil {
 				go m.urcHandler(parseParam(line))
 			}
