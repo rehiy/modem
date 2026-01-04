@@ -1,4 +1,4 @@
-package model
+package dev
 
 import (
 	"github.com/rehiy/modem/at"
