@@ -42,42 +42,42 @@ go get github.com/rehiy/modem
 package main
 
 import (
- "log"
- "time"
+    "log"
+    "time"
 
- "github.com/rehiy/modem/at"
+    "github.com/rehiy/modem/at"
 )
 
 func main() {
- // 1. 创建串口连接（需自行实现 Port 接口）
- port := openSerialPort("/dev/ttyUSB0", 115200)
- defer port.Close()
+    // 1. 创建串口连接（需自行实现 Port 接口）
+    port := openSerialPort("/dev/ttyUSB0", 115200)
+    defer port.Close()
 
- // 2. 配置通知处理函数
- urcHandler := func(label string, param map[int]string) {
-  log.Printf("通知: %s %v", label, param)
- }
+    // 2. 配置通知处理函数
+    urcHandler := func(label string, param map[int]string) {
+        log.Printf("通知: %s %v", label, param)
+    }
 
- // 3. 创建设备实例
- config := &at.Config{
-  Timeout: 5 * time.Second,
- }
- device := at.New(port, urcHandler, config)
- defer device.Close()
+    // 3. 创建设备实例
+    config := &at.Config{
+        Timeout: 5 * time.Second,
+    }
+    device := at.New(port, urcHandler, config)
+    defer device.Close()
 
- // 4. 测试连接
- if err := device.Test(); err != nil {
-  log.Fatal(err)
- }
+    // 4. 测试连接
+    if err := device.Test(); err != nil {
+        log.Fatal(err)
+    }
 
- // 5. 查询设备信息
- manufacturer, _ := device.GetManufacturer()
- model, _ := device.GetModel()
- log.Printf("设备: %s %s", manufacturer, model)
+    // 5. 查询设备信息
+    manufacturer, _ := device.GetManufacturer()
+    model, _ := device.GetModel()
+    log.Printf("设备: %s %s", manufacturer, model)
 
- // 6. 查询信号质量
- rssi, ber, _ := device.GetSignalQuality()
- log.Printf("信号强度: %d, 误码率: %d", rssi, ber)
+    // 6. 查询信号质量
+    rssi, ber, _ := device.GetSignalQuality()
+    log.Printf("信号强度: %d, 误码率: %d", rssi, ber)
 }
 ```
 
@@ -89,10 +89,10 @@ func main() {
 
 ```go
 type Port interface {
- Read(buf []byte) (int, error)
- Write(data []byte) (int, error)
- Flush() error
- Close() error
+    Read(buf []byte) (int, error)
+    Write(data []byte) (int, error)
+    Flush() error
+    Close() error
 }
 ```
 
@@ -120,11 +120,11 @@ func (m *Device) SendCommandExpect(cmd, expected string) error
 
 ```go
 type Config struct {
- Timeout         time.Duration        // 超时时间（默认 1 秒）
- CommandSet      *CommandSet          // 自定义 AT 命令集（可选）
- ResponseSet     *ResponseSet         // 自定义响应类型集（可选）
- NotificationSet *NotificationSet     // 自定义通知类型集（可选）
- Printf          func(string, ...any) // 日志输出函数（可选）
+    Timeout         time.Duration        // 超时时间（默认 1 秒）
+    CommandSet      *CommandSet          // 自定义 AT 命令集（可选）
+    ResponseSet     *ResponseSet         // 自定义响应类型集（可选）
+    NotificationSet *NotificationSet     // 自定义通知类型集（可选）
+    Printf          func(string, ...any) // 日志输出函数（可选）
 }
 ```
 
@@ -216,8 +216,8 @@ device.SendSMS("+8613800138000", "你好，这是一条中文短信！")
 // 列出短信
 list, _ := device.ListSMSPdu()
 for _, sms := range list {
- fmt.Printf("来自: %s\n内容: %s\n时间: %s\n",
-  sms.PhoneNumber, sms.Message, sms.Timestamp)
+    fmt.Printf("来自: %s\n内容: %s\n时间: %s\n",
+        sms.PhoneNumber, sms.Message, sms.Timestamp)
 }
 
 // 删除短信
@@ -228,11 +228,11 @@ device.DeleteSMS(1) // 删除指定索引的短信
 
 ```go
 type SMS struct {
- Index       int    // 短信索引
- Status      string // 状态：REC UNREAD, REC READ, STO UNSENT, STO SENT
- PhoneNumber string // 电话号码
- Timestamp   string // 时间戳
- Message     string // 短信内容
+    Index       int    // 短信索引
+    Status      string // 状态：REC UNREAD, REC READ, STO UNSENT, STO SENT
+    PhoneNumber string // 电话号码
+    Timestamp   string // 时间戳
+    Message     string // 短信内容
 }
 ```
 
@@ -242,22 +242,22 @@ type SMS struct {
 
 ```go
 urcHandler := func(label string, param map[int]string) {
- switch label {
- case "+CMTI:": // 新短信通知
-  index := param[0]
-  log.Println("收到新短信，索引:", index)
+    switch label {
+    case "+CMTI:": // 新短信通知
+        index := param[0]
+        log.Println("收到新短信，索引:", index)
 
- case "RING": // 来电
-  log.Println("电话响铃")
+    case "RING": // 来电
+        log.Println("电话响铃")
 
- case "+CLIP:": // 来电显示
-  number := param[0]
-  log.Println("来电号码:", number)
+    case "+CLIP:": // 来电显示
+        number := param[0]
+        log.Println("来电号码:", number)
 
- case "+CREG:": // 网络状态变化
-  stat := param[1]
-  log.Println("网络状态:", stat)
- }
+    case "+CREG:": // 网络状态变化
+        stat := param[1]
+        log.Println("网络状态:", stat)
+    }
 }
 ```
 
@@ -285,8 +285,8 @@ commands.SignalQuality = "AT^HCSQ"  // 华为扩展命令
 commands.ICCID = "AT^ICCID?"
 
 config := &at.Config{
- Timeout:    5 * time.Second,
- CommandSet: &commands,
+    Timeout:    5 * time.Second,
+    CommandSet: &commands,
 }
 ```
 
@@ -299,7 +299,7 @@ responses := at.DefaultResponseSet()
 responses.CustomFinal = []string{"CUSTOM_OK", "COMPLETE"}
 
 config := &at.Config{
- ResponseSet: &responses,
+    ResponseSet: &responses,
 }
 ```
 
@@ -313,7 +313,7 @@ notifications.NetworkReg = "^CREG:"
 notifications.StatusChange = "^CIEV:"
 
 config := &at.Config{
- NotificationSet: &notifications,
+    NotificationSet: &notifications,
 }
 ```
 
@@ -324,13 +324,13 @@ config := &at.Config{
 ```go
 responses, err := device.SendCommand("AT+CREG?")
 if err != nil {
- // 处理错误
- log.Printf("命令执行失败: %v", err)
- return
+    // 处理错误
+    log.Printf("命令执行失败: %v", err)
+    return
 }
 // 处理响应
 for _, line := range responses {
- fmt.Println(line)
+    fmt.Println(line)
 }
 ```
 
@@ -339,7 +339,7 @@ for _, line := range responses {
 ```go
 // 根据设备响应特性调整超时时间
 config := &at.Config{
- Timeout: 10 * time.Second, // 慢速设备使用更长超时
+    Timeout: 10 * time.Second, // 慢速设备使用更长超时
 }
 ```
 
@@ -348,9 +348,9 @@ config := &at.Config{
 ```go
 // 自定义日志函数
 config := &at.Config{
- Printf: func(format string, args ...interface{}) {
-  log.Printf("[AT-DEBUG] "+format, args...)
- },
+    Printf: func(format string, args ...interface{}) {
+        log.Printf("[AT-DEBUG] "+format, args...)
+    },
 }
 ```
 
@@ -364,12 +364,12 @@ var wg sync.WaitGroup
 // 多个 goroutine 并发查询
 wg.Add(2)
 go func() {
- defer wg.Done()
- device.GetSignalQuality()
+    defer wg.Done()
+    device.GetSignalQuality()
 }()
 go func() {
- defer wg.Done()
- device.GetOperator()
+    defer wg.Done()
+    device.GetOperator()
 }()
 wg.Wait()
 ```
@@ -424,25 +424,25 @@ graph LR
 import "github.com/tarm/serial"
 
 func openSerialPort(portName string, baudRate int) at.Port {
- config := &serial.Config{
-  Name:        portName,
-  Baud:        baudRate,
-  ReadTimeout: time.Second,
- }
- port, err := serial.OpenPort(config)
- if err != nil {
-  log.Fatal(err)
- }
- return &serialPort{port}
+    config := &serial.Config{
+        Name:        portName,
+        Baud:        baudRate,
+        ReadTimeout: time.Second,
+    }
+    port, err := serial.OpenPort(config)
+    if err != nil {
+        log.Fatal(err)
+    }
+    return &serialPort{port}
 }
 
 type serialPort struct {
- *serial.Port
+    *serial.Port
 }
 
 func (s *serialPort) Flush() error {
- // 根据实际串口库实现
- return nil
+    // 根据实际串口库实现
+    return nil
 }
 ```
 
@@ -453,7 +453,7 @@ func (s *serialPort) Flush() error {
 ```go
 responses, err := device.SendCommand("AT+CMD?")
 if err != nil && strings.Contains(err.Error(), "timeout") {
- log.Println("命令超时，设备可能响应较慢")
+    log.Println("命令超时，设备可能响应较慢")
 }
 ```
 
