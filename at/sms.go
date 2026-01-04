@@ -26,90 +26,6 @@ func (m *Device) SetSMSMode(v int) error {
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// ListSMSPdu 获取短信列表
-func (m *Device) ListSMSPdu(stat int) ([]SMS, error) {
-	cmd := fmt.Sprintf("%s=%d", m.commands.ListSMS, stat)
-	responses, err := m.SendCommand(cmd)
-	if err != nil {
-		return nil, err
-	}
-
-	result := []SMS{}
-	collector := sms.NewCollector()
-	indices := make(map[int][]int) // refKey -> 所有分片索引
-
-	for i, l := 0, len(responses); i < l; {
-		label, param := parseParam(responses[i])
-		i++
-
-		if label != "+CMGL" || len(param) < 2 {
-			continue
-		}
-
-		// 无下一行，退出
-		if i >= l {
-			break
-		}
-
-		// 解码 PDU 数据
-		pduHex := responses[i]
-		i++
-
-		// 使用 pdumode 解析十六进制 PDU 字符串
-		pdu, err := pdumode.UnmarshalHexString(pduHex)
-		if err != nil {
-			m.printf("unmarshal pdu error: %v", err)
-			continue
-		}
-
-		// 从 PDU 中解析 TPDU
-		tpduMsg, err := sms.Unmarshal(pdu.TPDU)
-		if err != nil {
-			m.printf("unmarshal tpdu error: %v", err)
-			continue
-		}
-
-		// 记录索引和引用号
-		index := parseInt(param[0])
-		_, _, mref, _ := tpduMsg.ConcatInfo()
-		refKey := int(mref)
-		// 长短信用 mref 作为 key，短短信用 index 作为 key
-		if refKey == 0 {
-			refKey = index
-		}
-		indices[refKey] = append(indices[refKey], index)
-
-		// 收集短信（长短信自动合并）
-		segments, err := collector.Collect(*tpduMsg)
-		if err != nil {
-			m.printf("collect sms %d error: %v", index, err)
-			continue
-		}
-
-		// 收集到完整短信时解码并添加
-		if len(segments) > 0 {
-			msgBytes, err := sms.Decode(segments)
-			if err != nil {
-				m.printf("decode sms error: %v", err)
-				continue
-			}
-
-			result = append(result, SMS{
-				PhoneNumber: segments[0].OA.Number(),
-				Text:        string(msgBytes),
-				Time:        segments[0].SCTS.Time.Format("2006/01/02 15:04:05"),
-				Index:       indices[refKey][0],
-				Indices:     indices[refKey],
-				Status:      param[1],
-			})
-			delete(indices, refKey)
-		}
-	}
-
-	sort.Slice(result, func(i, j int) bool { return result[i].Index < result[j].Index })
-	return result, nil
-}
-
 // SendSMSPdu 发送短信
 func (m *Device) SendSMSPdu(number, message string) error {
 	tpdus, err := sms.Encode([]byte(message), sms.To(number))
@@ -155,9 +71,96 @@ func (m *Device) SendSMSPdu(number, message string) error {
 	return nil
 }
 
-// DeleteSMS 删除指定索引的短信
-func (m *Device) DeleteSMS(index int) error {
-	cmd := fmt.Sprintf("%s=%d", m.commands.DeleteSMS, index)
-	_, err := m.SendCommand(cmd)
-	return err
+// ListSMSPdu 获取短信列表
+func (m *Device) ListSMSPdu(stat int) ([]SMS, error) {
+	cmd := fmt.Sprintf("%s=%d", m.commands.ListSMS, stat)
+	responses, err := m.SendCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	result := []SMS{}
+	indices := make(map[int][]int)
+	collector := sms.NewCollector()
+	defer collector.Close() // 确保资源释放
+
+	for i, l := 0, len(responses); i < l; {
+		label, param := parseParam(responses[i])
+		i++
+
+		if label != "+CMGL" || len(param) < 2 {
+			continue
+		}
+
+		// 无下一行，退出
+		if i >= l {
+			break
+		}
+
+		// 提取 PDU 数据
+		pduHex := responses[i]
+		i++
+
+		// 解析十六进制 PDU
+		pdu, err := pdumode.UnmarshalHexString(pduHex)
+		if err != nil {
+			m.printf("unmarshal pdu error: %v", err)
+			continue
+		}
+
+		// 从 PDU 中解析 TPDU
+		tpduMsg, err := sms.Unmarshal(pdu.TPDU)
+		if err != nil {
+			m.printf("unmarshal tpdu error: %v", err)
+			continue
+		}
+
+		// 记录索引和引用号
+		index := parseInt(param[0])
+		_, _, mref, _ := tpduMsg.ConcatInfo()
+		if mref == 0 {
+			mref = index
+		}
+		indices[mref] = append(indices[mref], index)
+
+		// 收集短信（长短信自动合并）
+		segments, err := collector.Collect(*tpduMsg)
+		if err != nil {
+			m.printf("collect sms %d error: %v", index, err)
+			continue
+		}
+
+		// 收集到完整短信时解码并添加
+		if len(segments) > 0 {
+			msgBytes, err := sms.Decode(segments)
+			if err != nil {
+				m.printf("decode sms error: %v", err)
+				continue
+			}
+
+			result = append(result, SMS{
+				PhoneNumber: segments[0].OA.Number(),
+				Text:        string(msgBytes),
+				Time:        segments[0].SCTS.Time.Format("2006/01/02 15:04:05"),
+				Index:       indices[mref][0],
+				Indices:     indices[mref],
+				Status:      param[1],
+			})
+			delete(indices, mref)
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].Index < result[j].Index })
+	return result, nil
+}
+
+// DeleteSMS 批量删除指定索引的短信
+func (m *Device) DeleteSMS(indices []int) error {
+	for _, index := range indices {
+		cmd := fmt.Sprintf("%s=%d", m.commands.DeleteSMS, index)
+		if _, err := m.SendCommand(cmd); err != nil {
+			return err
+		}
+	}
+	return nil
 }
