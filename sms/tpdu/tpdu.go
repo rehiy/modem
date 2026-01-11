@@ -54,7 +54,7 @@ type TPDU struct {
 
 	// PI contains the TP-PI Parameter Indicator field.
 	//
-	//  Only applies to SMS-DELIVER-REPORT and SMS-SUBMIT-REPORT
+	// Only applies to SMS-DELIVER-REPORT and SMS-SUBMIT-REPORT
 	PI PI
 
 	// SCTS contains the TP-SCTS Service Center Time Stamp field.
@@ -84,7 +84,7 @@ type TPDU struct {
 
 	// VP contains the TP-VP Validity Period field.
 	//
-	//  Only applies to SMS-SUBMIT
+	// Only applies to SMS-SUBMIT
 	VP ValidityPeriod
 
 	// UDH contains the TP-UDH User Data Header field.
