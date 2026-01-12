@@ -177,7 +177,12 @@ func (ns *NotificationSet) IsNotification(line, cmd string) bool {
 	}
 	// 避免将命令响应误认为 URC
 	if cmd != "" && urc != "" && urc[0] == '+' {
-		return !strings.HasPrefix(cmd, "AT"+urc)
+		if urc == ns.CMEError || urc == ns.CMSError {
+			return false
+		}
+		if strings.HasPrefix(cmd, "AT"+urc) {
+			return false
+		}
 	}
 	return urc != ""
 }
