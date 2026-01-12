@@ -349,7 +349,7 @@ config := &at.Config{
 ```go
 // 自定义日志函数
 config := &at.Config{
-    Printf: func(format string, args ...interface{}) {
+    Printf: func(format string, args ...any) {
         log.Printf("[AT-DEBUG] "+format, args...)
     },
 }
