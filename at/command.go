@@ -7,68 +7,118 @@ import (
 
 // CommandSet 定义可配置的 AT 命令集
 type CommandSet struct {
-	// 基本命令
-	Test         string // 测试连接
-	EchoOff      string // 关闭回显
-	EchoOn       string // 开启回显
-	Reset        string // 重置 modem
-	FactoryReset string // 恢复出厂设置
-	SaveSettings string // 保存设置
+	// 基本控制命令
+	Test         string // 测试连接 AT
+	EchoOff      string // 关闭回显 ATE0
+	EchoOn       string // 开启回显 ATE1
+	Reset        string // 重置 modem ATZ
+	FactoryReset string // 恢复出厂设置 AT&F
+	SaveSettings string // 保存设置 AT&W
+	LoadProfile  string // 加载配置文件 ATZ[profile]
+	SaveProfile  string // 保存到配置文件 AT&W[profile]
 
-	// 信息查询
-	Manufacturer string // 查询制造商
-	Model        string // 查询型号
-	Revision     string // 查询版本
-	SerialNumber string // 查询序列号
-	IMSI         string // 查询 IMSI
-	ICCID        string // 查询 ICCID
-	PhoneNumber  string // 查询手机号
-	Operator     string // 查询运营商
+	// 设备身份信息
+	IMEI         string // 查询 IMEI AT+CGSN
+	Manufacturer string // 查询制造商 AT+CGMI
+	Model        string // 查询型号 AT+CGMM
+	Revision     string // 查询版本 AT+CGMR
+	IMSI         string // 查询 IMSI AT+CIMI
+	ICCID        string // 查询 ICCID AT+CCID
+	Number       string // 查询本机号码 AT+CNUM
 
-	// 网络信号
-	SignalQuality       string // 查询信号质量
-	NetworkRegistration string // 网络注册状态
-	GPRSRegistration    string // GPRS 注册状态
+	// 网络状态
+	Operator    string // 查询运营商 AT+COPS
+	NetworkMode string // 网络模式 AT+CNMP
+	NetworkReg  string // 网络注册状态 AT+CREG
+	GPRSReg     string // GPRS 注册状态 AT+CGREG
+	Signal      string // 信号质量 AT+CSQ
+
+	// SIM 卡管理
+	SIMStatus string // 查询 SIM 卡状态 AT+CPIN
+	PINVerify string // PIN 码验证 AT+CPIN
+	PINChange string // PIN 码修改 AT+CPWD
+	PINLock   string // PIN 锁控制 AT+CLCK
+
+	// 设备状态
+	BatteryLevel string // 查询电池电量 AT+CBC
+	DeviceTemp   string // 查询设备温度 AT+CPMUTEMP
+	NetworkTime  string // 查询网络时间 AT+CCLK
+	SetTime      string // 设置时间 AT+CCLK
+
+	// 网络配置
+	APN        string // APN 配置 AT+CGDCONT
+	IPAddress  string // 查询 IP 地址 AT+CGPADDR
+	PDPContext string // PDP 上下文激活 AT+CGACT
+	SetAPN     string // 设置 APN AT+CGDCONT
 
 	// 短信相关
-	SMSFormat string // 设置短信格式
-	ListSMS   string // 列出短信
-	ReadSMS   string // 读取短信
-	DeleteSMS string // 删除短信
-	SendSMS   string // 发送短信
+	SMSFormat string // 设置短信格式 AT+CMGF
+	ListSMS   string // 列出短信 AT+CMGL
+	ReadSMS   string // 读取短信 AT+CMGR
+	DeleteSMS string // 删除短信 AT+CMGD
+	SendSMS   string // 发送短信 AT+CMGS
 
-	// 通话相关
-	Dial     string // 拨号
-	Answer   string // 接听
-	Hangup   string // 挂断
-	CallerID string // 来电显示
+	// 语音通话
+	Dial      string // 拨号 ATD
+	Answer    string // 接听 ATA
+	Hangup    string // 挂断 ATH
+	CallerID  string // 来电显示 AT+CLIP
+	CallState string // 通话状态 AT+CLCC
+	CallWait  string // 呼叫等待 AT+CCWA
+	CallFWD   string // 呼叫转移 AT+CCFC
+
+	// 通知管理
+	NetworkRegNotify string // 网络注册通知 AT+CREG
+	GPRSRegNotify    string // GPRS 注册通知 AT+CGREG
+	SignalReport     string // 信号质量上报 AT+CSQ
 }
 
 // DefaultCommandSet 返回默认的标准 AT 命令集
 func DefaultCommandSet() *CommandSet {
 	return &CommandSet{
-		// 基本命令
+		// 基本控制命令
 		Test:         "AT",
 		EchoOff:      "ATE0",
 		EchoOn:       "ATE1",
 		Reset:        "ATZ",
 		FactoryReset: "AT&F",
 		SaveSettings: "AT&W",
+		LoadProfile:  "ATZ",
+		SaveProfile:  "AT&W",
 
-		// 信息查询
+		// 设备身份信息
+		IMEI:         "AT+CGSN",
 		Manufacturer: "AT+CGMI",
 		Model:        "AT+CGMM",
 		Revision:     "AT+CGMR",
-		SerialNumber: "AT+CGSN",
 		IMSI:         "AT+CIMI",
 		ICCID:        "AT+CCID",
-		PhoneNumber:  "AT+CNUM",
-		Operator:     "AT+COPS",
+		Number:       "AT+CNUM",
 
-		// 网络信号
-		SignalQuality:       "AT+CSQ",
-		NetworkRegistration: "AT+CREG",
-		GPRSRegistration:    "AT+CGREG",
+		// 网络状态
+		Operator:    "AT+COPS",
+		NetworkMode: "AT+CNMP",
+		NetworkReg:  "AT+CREG",
+		GPRSReg:     "AT+CGREG",
+		Signal:      "AT+CSQ",
+
+		// SIM 卡管理
+		SIMStatus: "AT+CPIN",
+		PINVerify: "AT+CPIN",
+		PINChange: "AT+CPWD",
+		PINLock:   "AT+CLCK",
+
+		// 设备状态
+		BatteryLevel: "AT+CBC",
+		DeviceTemp:   "AT+CPMUTEMP",
+		NetworkTime:  "AT+CCLK",
+		SetTime:      "AT+CCLK",
+
+		// 网络配置
+		APN:        "AT+CGDCONT",
+		IPAddress:  "AT+CGPADDR",
+		PDPContext: "AT+CGACT",
+		SetAPN:     "AT+CGDCONT",
 
 		// 短信相关
 		SMSFormat: "AT+CMGF",
@@ -77,50 +127,24 @@ func DefaultCommandSet() *CommandSet {
 		DeleteSMS: "AT+CMGD",
 		SendSMS:   "AT+CMGS",
 
-		// 通话相关
-		Dial:     "ATD",
-		Answer:   "ATA",
-		Hangup:   "ATH",
-		CallerID: "AT+CLIP",
+		// 语音通话
+		Dial:      "ATD",
+		Answer:    "ATA",
+		Hangup:    "ATH",
+		CallerID:  "AT+CLIP",
+		CallState: "AT+CLCC",
+		CallWait:  "AT+CCWA",
+		CallFWD:   "AT+CCFC",
+
+		// 通知管理
+		NetworkRegNotify: "AT+CREG",
+		GPRSRegNotify:    "AT+CGREG",
+		SignalReport:     "AT+CSQ",
 	}
 }
 
-// ===== 基本命令 =====
-
-// Test 测试连接
-func (m *Device) Test() error {
-	return m.SendCommandExpect(m.commands.Test, "OK")
-}
-
-// EchoOff 关闭回显
-func (m *Device) EchoOff() error {
-	return m.SendCommandExpect(m.commands.EchoOff, "OK")
-}
-
-// EchoOn 开启回显
-func (m *Device) EchoOn() error {
-	return m.SendCommandExpect(m.commands.EchoOn, "OK")
-}
-
-// Reset 重启模块
-func (m *Device) Reset() error {
-	return m.SendCommandExpect(m.commands.Reset, "OK")
-}
-
-// FactoryReset 恢复出厂设置
-func (m *Device) FactoryReset() error {
-	return m.SendCommandExpect(m.commands.FactoryReset, "OK")
-}
-
-// SaveSettings 保存设置
-func (m *Device) SaveSettings() error {
-	return m.SendCommandExpect(m.commands.SaveSettings, "OK")
-}
-
-// ===== 信息查询 =====
-
-// SmpleQuery 通用简单信息查询函数
-func (m *Device) SmpleQuery(cmd string) (string, error) {
+// SimpleQuery 通用简单信息查询函数
+func (m *Device) SimpleQuery(cmd string) (string, error) {
 	responses, err := m.SendCommand(cmd)
 	if err != nil {
 		return "", err
@@ -134,185 +158,4 @@ func (m *Device) SmpleQuery(cmd string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no info found for %s", cmd)
-}
-
-// GetManufacturer 查询制造商信息
-func (m *Device) GetManufacturer() (string, error) {
-	return m.SmpleQuery(m.commands.Manufacturer)
-}
-
-// GetModel 查询型号信息
-func (m *Device) GetModel() (string, error) {
-	return m.SmpleQuery(m.commands.Model)
-}
-
-// GetRevision 查询版本信息
-func (m *Device) GetRevision() (string, error) {
-	return m.SmpleQuery(m.commands.Revision)
-}
-
-// GetSerialNumber 查询序列号
-func (m *Device) GetSerialNumber() (string, error) {
-	return m.SmpleQuery(m.commands.SerialNumber)
-}
-
-// GetIMSI 查询IMSI信息
-func (m *Device) GetIMSI() (string, error) {
-	return m.SmpleQuery(m.commands.IMSI)
-}
-
-// GetICCID 查询ICCID信息
-func (m *Device) GetICCID() (string, error) {
-	return m.SmpleQuery(m.commands.ICCID)
-}
-
-// GetPhoneNumber 查询手机号
-func (m *Device) GetPhoneNumber() (string, int, error) {
-	responses, err := m.SendCommand(m.commands.PhoneNumber)
-	if err != nil {
-		return "", 0, err
-	}
-
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CNUM: ,"+8613800138000",129
-		if label == "+CNUM" && len(param) >= 2 {
-			number := param[1]
-			tags := parseInt(param[2]) //号码属性
-			return number, tags, nil
-		}
-	}
-
-	return "", 0, fmt.Errorf("no phone number found")
-}
-
-// GetOperator 查询运营商信息
-func (m *Device) GetOperator() (int, int, string, int, error) {
-	responses, err := m.SendCommand(m.commands.Operator + "?")
-	if err != nil {
-		return 0, 0, "", 0, err
-	}
-
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +COPS: 0,2,"46001",7
-		if label == "+COPS" && len(param) >= 3 {
-			mode := parseInt(param[0])
-			format := parseInt(param[1])
-			oper := param[2]          // 运营商
-			act := parseInt(param[3]) // 接入技术
-			return mode, format, oper, act, nil
-		}
-	}
-
-	return 0, 0, "", 0, fmt.Errorf("failed to parse operator info")
-}
-
-// ===== 网络信号 =====
-
-// GetSignalQuality 查询信号质量
-func (m *Device) GetSignalQuality() (int, int, error) {
-	responses, err := m.SendCommand(m.commands.SignalQuality)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CSQ: 15,0
-		if label == "+CSQ" && len(param) >= 2 {
-			rssi := parseInt(param[0])
-			ber := parseInt(param[1])
-			return rssi, ber, nil
-		}
-	}
-
-	return 0, 0, fmt.Errorf("failed to parse signal quality")
-}
-
-// GetNetworkStatus 查询网络注册状态
-func (m *Device) GetNetworkStatus() (int, int, error) {
-	responses, err := m.SendCommand(m.commands.NetworkRegistration + "?")
-	if err != nil {
-		return 0, 0, err
-	}
-
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CREG: 0,1
-		if label == "+CREG" && len(param) >= 2 {
-			n := parseInt(param[0])
-			stat := parseInt(param[1])
-			return n, stat, nil
-		}
-	}
-
-	return 0, 0, fmt.Errorf("failed to parse network status")
-}
-
-// GetGPRSStatus 查询GPRS注册状态
-func (m *Device) GetGPRSStatus() (int, int, error) {
-	responses, err := m.SendCommand(m.commands.GPRSRegistration + "?")
-	if err != nil {
-		return 0, 0, err
-	}
-
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CGREG: 0,1
-		if label == "+CGREG" && len(param) >= 2 {
-			n := parseInt(param[0])
-			stat := parseInt(param[1])
-			return n, stat, nil
-		}
-	}
-
-	return 0, 0, fmt.Errorf("failed to parse GPRS status")
-}
-
-// ===== 通话相关 =====
-
-// Dial 拨打电话
-func (m *Device) Dial(number string) error {
-	return m.SendCommandExpect(m.commands.Dial+number, "OK")
-}
-
-// Answer 接听电话
-func (m *Device) Answer() error {
-	return m.SendCommandExpect(m.commands.Answer, "OK")
-}
-
-// Hangup 挂断电话
-func (m *Device) Hangup() error {
-	return m.SendCommandExpect(m.commands.Hangup, "OK")
-}
-
-// GetCallerID 获取来电显示状态
-func (m *Device) GetCallerID() (bool, error) {
-	responses, err := m.SendCommand(m.commands.CallerID + "?")
-	if err != nil {
-		return false, err
-	}
-
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CLIP: 1
-		if label == "+CLIP" && len(param) >= 1 {
-			status := parseInt(param[0])
-			return status == 1, nil
-		}
-	}
-
-	return false, fmt.Errorf("failed to parse caller ID status")
-}
-
-// SetCallerID 设置来电显示
-func (m *Device) SetCallerID(enable bool) error {
-	cmd := m.commands.CallerID
-	if enable {
-		cmd += "=1"
-	} else {
-		cmd += "=0"
-	}
-	return m.SendCommandExpect(cmd, "OK")
 }
