@@ -12,21 +12,21 @@ import (
 	"time"
 )
 
-// 串口
-type Port interface {
-	Read(buf []byte) (int, error)
-	Write(data []byte) (int, error)
-	Flush() error
-	Close() error
-}
-
 // 结束符
 var Terminators = []string{
-	"\r\n", // 标准结束符 (CRLF)
-	"\n",   // 换行符 (LF)
 	"\r",   // 回车符 (CR)
+	"\n",   // 换行符 (LF)
+	"\r\n", // 标准结束符 (CRLF)
 	"\x1A", // Ctrl+Z (短信发送确认)
 	"\x1B", // ESC (取消输入)
+}
+
+// 端口接口
+type Port interface {
+	Read(buf []byte) (int, error)   // 读取数据
+	Write(data []byte) (int, error) // 写入数据
+	Flush() error                   // 刷新缓冲区，暂未使用
+	Close() error                   // 关闭连接
 }
 
 // 配置参数
@@ -41,7 +41,6 @@ type Config struct {
 // 设备连接
 type Device struct {
 	port          Port                 // 串口连接
-	name          string               // 设备名称
 	timeout       time.Duration        // 超时时间
 	commands      CommandSet           // 使用的 AT 命令集
 	responses     ResponseSet          // 使用的响应类型集
@@ -108,7 +107,6 @@ func (m *Device) Close() error {
 	}
 
 	close(m.responseChan)
-
 	return m.port.Close()
 }
 
@@ -128,15 +126,8 @@ func (m *Device) SendCommand(cmd string) ([]string, error) {
 	}
 
 	// 检查命令是否已包含结束符，避免重复添加
-	hasTerminator := false
-	for _, item := range Terminators {
-		if strings.HasSuffix(cmd, item) {
-			hasTerminator = true
-			break
-		}
-	}
-	if !hasTerminator {
-		cmd = cmd + Terminators[0]
+	if !hasTerminator(cmd) {
+		cmd = cmd + "\r\n"
 	}
 
 	// 记录正在执行的命令
@@ -201,6 +192,7 @@ func (m *Device) readAndDispatch() {
 			return
 		}
 
+		// 读取一行数据
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err != io.EOF {
@@ -216,23 +208,23 @@ func (m *Device) readAndDispatch() {
 			continue
 		}
 
-		m.printf("read line: %s", line)
-
 		// 处理通知消息
 		cmd := m.cmd.Load().(string)
 		if m.notifications.IsNotification(line, cmd) {
+			m.printf("receive urc: %s", line)
 			if m.urcHandler != nil {
 				go m.urcHandler(parseParam(line))
 			}
 			continue
 		}
 
-		// 将数据写入响应通道
+		// 写入响应通道
 		select {
 		case m.responseChan <- line:
+			m.printf("collect line: %s", line)
 		default:
 			// 通道满了，丢弃数据（避免阻塞）
-			m.printf("discarding data: %s", line)
+			m.printf("discard line: %s", line)
 		}
 	}
 }
@@ -251,7 +243,7 @@ func (m *Device) writeString(data string) error {
 		return fmt.Errorf("failed to write: %w", err)
 	}
 	if n != len(data) {
-		return fmt.Errorf("incomplete write: wrote %d of %d bytes", n, len(data))
+		return fmt.Errorf("incomplete: wrote %d of %d bytes", n, len(data))
 	}
 
 	return nil
@@ -265,13 +257,23 @@ func parseInt(s string) int {
 	return v
 }
 
+// hasTerminator 检查命令是否包含任何结束符
+func hasTerminator(cmd string) bool {
+	for _, t := range Terminators {
+		if strings.HasSuffix(cmd, t) {
+			return true
+		}
+	}
+	return false
+}
+
 // parseParam 解析响应内容
 func parseParam(line string) (string, map[int]string) {
 	parts := strings.SplitN(line, ":", 2)
 	if len(parts) == 2 {
+		param := map[int]string{}
 		label := strings.TrimSpace(parts[0])
 		group := strings.Split(strings.TrimSpace(parts[1]), ",")
-		param := map[int]string{}
 		for i, v := range group {
 			param[i] = strings.Trim(strings.TrimSpace(v), `"'`)
 		}

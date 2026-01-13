@@ -91,7 +91,6 @@ func main() {
 type Port interface {
     Read(buf []byte) (int, error)
     Write(data []byte) (int, error)
-    Flush() error
     Close() error
 }
 ```
@@ -434,16 +433,7 @@ func openSerialPort(portName string, baudRate int) at.Port {
     if err != nil {
         log.Fatal(err)
     }
-    return &serialPort{port}
-}
-
-type serialPort struct {
-    *serial.Port
-}
-
-func (s *serialPort) Flush() error {
-    // 根据实际串口库实现
-    return nil
+    return port
 }
 ```
 
