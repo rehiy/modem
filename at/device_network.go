@@ -11,19 +11,11 @@ func (m *Device) GetOperator() (int, int, string, int, error) {
 		return 0, 0, "", 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +COPS: 0,2,"46001",7
-		if label == "+COPS" && len(param) >= 3 {
-			mode := parseInt(param[0])
-			format := parseInt(param[1])
-			oper := param[2]          // 运营商
-			act := parseInt(param[3]) // 接入技术
-			return mode, format, oper, act, nil
-		}
+	param, err := parseResponse(m.commands.Operator, responses, 3)
+	if err != nil {
+		return 0, 0, "", 0, err
 	}
-
-	return 0, 0, "", 0, fmt.Errorf("failed to parse operator info")
+	return parseInt(param[0]), parseInt(param[1]), param[2], parseInt(param[3]), nil
 }
 
 // GetNetworkMode 查询网络模式
@@ -33,15 +25,11 @@ func (m *Device) GetNetworkMode() (int, error) {
 		return 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CNMP: 38
-		if label == "+CNMP" && len(param) >= 1 {
-			return parseInt(param[0]), nil
-		}
+	param, err := parseResponse(m.commands.NetworkMode, responses, 1)
+	if err != nil {
+		return 0, err
 	}
-
-	return 0, fmt.Errorf("failed to parse network mode")
+	return parseInt(param[0]), nil
 }
 
 // SetNetworkMode 设置网络模式
@@ -58,15 +46,11 @@ func (m *Device) GetNetworkStatus() (int, int, error) {
 		return 0, 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CREG: 0,1
-		if label == "+CREG" && len(param) >= 2 {
-			return parseInt(param[0]), parseInt(param[1]), nil
-		}
+	param, err := parseResponse(m.commands.NetworkReg, responses, 2)
+	if err != nil {
+		return 0, 0, err
 	}
-
-	return 0, 0, fmt.Errorf("failed to parse network status")
+	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
 // GetGPRSStatus 查询GPRS注册状态
@@ -76,15 +60,11 @@ func (m *Device) GetGPRSStatus() (int, int, error) {
 		return 0, 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CGREG: 0,1
-		if label == "+CGREG" && len(param) >= 2 {
-			return parseInt(param[0]), parseInt(param[1]), nil
-		}
+	param, err := parseResponse(m.commands.GPRSReg, responses, 2)
+	if err != nil {
+		return 0, 0, err
 	}
-
-	return 0, 0, fmt.Errorf("failed to parse GPRS status")
+	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
 // GetSignalQuality 查询信号质量
@@ -94,17 +74,11 @@ func (m *Device) GetSignalQuality() (int, int, error) {
 		return 0, 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CSQ: 15,0
-		if label == "+CSQ" && len(param) >= 2 {
-			rssi := parseInt(param[0])
-			ber := parseInt(param[1])
-			return rssi, ber, nil
-		}
+	param, err := parseResponse(m.commands.Signal, responses, 2)
+	if err != nil {
+		return 0, 0, err
 	}
-
-	return 0, 0, fmt.Errorf("failed to parse signal quality")
+	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
 // ===== 网络配置 =====
@@ -116,19 +90,15 @@ func (m *Device) GetAPN(cid int) (int, string, string, error) {
 		return 0, "", "", err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CGDCONT: 1,"IP","cmnet","","0.0.0.0",0,0
-		if label == "+CGDCONT" && len(param) >= 3 {
-			configCID := parseInt(param[0])
-			if cid != 0 && configCID != cid {
-				return 0, "", "", fmt.Errorf("APN with cid %d not found", cid)
-			}
-			return configCID, param[1], param[2], nil
-		}
+	filter := func(param map[int]string) bool {
+		return cid == 0 || parseInt(param[0]) == cid
 	}
 
-	return 0, "", "", fmt.Errorf("failed to parse APN configuration")
+	param, err := parseResponseFiltered(m.commands.APN, responses, 3, filter)
+	if err != nil {
+		return 0, "", "", err
+	}
+	return parseInt(param[0]), param[1], param[2], nil
 }
 
 // SetAPN 设置 APN 配置
@@ -148,19 +118,15 @@ func (m *Device) GetPDPContext(cid int) (int, int, error) {
 		return 0, 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CGACT: 1,1
-		if label == "+CGACT" && len(param) >= 2 {
-			contextCID := parseInt(param[0])
-			if cid != 0 && contextCID != cid {
-				continue
-			}
-			return contextCID, parseInt(param[1]), nil
-		}
+	filter := func(param map[int]string) bool {
+		return cid == 0 || parseInt(param[0]) == cid
 	}
 
-	return 0, 0, fmt.Errorf("failed to parse PDP context status")
+	param, err := parseResponseFiltered(m.commands.PDPContext, responses, 2, filter)
+	if err != nil {
+		return 0, 0, err
+	}
+	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
 // SetPDPContext 设置 PDP 上下文状态
@@ -178,19 +144,15 @@ func (m *Device) GetIPAddress(cid int) (int, string, error) {
 		return 0, "", err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CGPADDR: 1,"10.1.2.3"
-		if label == "+CGPADDR" && len(param) >= 2 {
-			configCID := parseInt(param[0])
-			if cid != 0 && configCID != cid {
-				return 0, "", fmt.Errorf("IP address with cid %d not found", cid)
-			}
-			return configCID, param[1], nil
-		}
+	filter := func(param map[int]string) bool {
+		return cid == 0 || parseInt(param[0]) == cid
 	}
 
-	return 0, "", fmt.Errorf("failed to parse IP address")
+	param, err := parseResponseFiltered(m.commands.IPAddress, responses, 2, filter)
+	if err != nil {
+		return 0, "", err
+	}
+	return parseInt(param[0]), param[1], nil
 }
 
 // ===== 通知管理 =====
@@ -202,15 +164,11 @@ func (m *Device) GetNetworkRegNotify() (int, error) {
 		return 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CREG: 2,1
-		if label == "+CREG" && len(param) >= 1 {
-			return parseInt(param[0]), nil
-		}
+	param, err := parseResponse(m.commands.NetworkRegNotify, responses, 1)
+	if err != nil {
+		return 0, err
 	}
-
-	return 0, fmt.Errorf("failed to parse network reg notify status")
+	return parseInt(param[0]), nil
 }
 
 // SetNetworkRegNotify 设置网络注册通知
@@ -227,15 +185,11 @@ func (m *Device) GetGPRSRegNotify() (int, error) {
 		return 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CGREG: 2,1
-		if label == "+CGREG" && len(param) >= 1 {
-			return parseInt(param[0]), nil
-		}
+	param, err := parseResponse(m.commands.GPRSRegNotify, responses, 1)
+	if err != nil {
+		return 0, err
 	}
-
-	return 0, fmt.Errorf("failed to parse GPRS reg notify status")
+	return parseInt(param[0]), nil
 }
 
 // SetGPRSRegNotify 设置 GPRS 注册通知

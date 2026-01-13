@@ -26,16 +26,11 @@ func (m *Device) GetCallerID() (bool, error) {
 		return false, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CLIP: 1
-		if label == "+CLIP" && len(param) >= 1 {
-			status := parseInt(param[0])
-			return status == 1, nil
-		}
+	param, err := parseResponse(m.commands.CallerID, responses, 1)
+	if err != nil {
+		return false, err
 	}
-
-	return false, fmt.Errorf("failed to parse caller ID status")
+	return parseInt(param[0]) == 1, nil
 }
 
 // SetCallerID 设置来电显示
@@ -68,10 +63,10 @@ func (m *Device) GetCallState() ([]CallInfo, error) {
 	}
 
 	var calls []CallInfo
+	label := getCommandResponseLabel(m.commands.CallState)
 	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CLCC: 1,1,4,0,0,"10086",129
-		if label == "+CLCC" && len(param) >= 7 {
+		respLabel, param := parseParam(line)
+		if respLabel == label && len(param) >= 7 {
 			calls = append(calls, CallInfo{
 				ID:     parseInt(param[0]),
 				Dir:    parseInt(param[1]),
@@ -97,16 +92,11 @@ func (m *Device) GetCallWait() (bool, error) {
 		return false, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CCWA: 0,1
-		if label == "+CCWA" && len(param) >= 2 {
-			status := parseInt(param[1])
-			return status == 1, nil
-		}
+	param, err := parseResponse(m.commands.CallWait, responses, 2)
+	if err != nil {
+		return false, err
 	}
-
-	return false, fmt.Errorf("failed to parse call waiting status")
+	return parseInt(param[1]) == 1, nil
 }
 
 // SetCallWait 设置呼叫等待
@@ -127,17 +117,11 @@ func (m *Device) GetCallFWD(reason int) (bool, string, error) {
 		return false, "", err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CCFC: 0,3,"13800138000",145
-		if label == "+CCFC" && len(param) >= 4 {
-			status := parseInt(param[1])
-			number := param[2]
-			return status == 1, number, nil
-		}
+	param, err := parseResponse(m.commands.CallFWD, responses, 4)
+	if err != nil {
+		return false, "", err
 	}
-
-	return false, "", fmt.Errorf("failed to parse call forward status")
+	return parseInt(param[1]) == 1, param[2], nil
 }
 
 // SetCallFWD 设置呼叫转移

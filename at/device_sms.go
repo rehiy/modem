@@ -84,11 +84,12 @@ func (m *Device) ListSMSPdu(stat int) ([]SMS, error) {
 	collector := sms.NewCollector()
 	defer collector.Close() // 确保资源释放
 
+	expectedLabel := getCommandResponseLabel(m.commands.ListSMS)
 	for i, l := 0, len(responses); i < l; {
 		label, param := parseParam(responses[i])
 		i++
 
-		if label != "+CMGL" || len(param) < 2 {
+		if label != expectedLabel || len(param) < 2 {
 			continue
 		}
 

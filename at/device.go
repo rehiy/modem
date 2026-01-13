@@ -5,21 +5,11 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
-
-// 结束符
-var Terminators = []string{
-	"\r",   // 回车符 (CR)
-	"\n",   // 换行符 (LF)
-	"\r\n", // 标准结束符 (CRLF)
-	"\x1A", // Ctrl+Z (短信发送确认)
-	"\x1B", // ESC (取消输入)
-}
 
 // 端口接口
 type Port interface {
@@ -155,8 +145,23 @@ func (m *Device) SendCommandExpect(cmd string, expected string) error {
 			return nil
 		}
 	}
+	return fmt.Errorf("%q not found in %v", expected, responses)
+}
 
-	return fmt.Errorf("expected response %q not found in %v", expected, responses)
+// SimpleQuery 通用简单信息查询函数
+func (m *Device) SimpleQuery(cmd string) (string, error) {
+	responses, err := m.SendCommand(cmd)
+	if err != nil {
+		return "", err
+	}
+
+	// 查找不以AT开头的响应
+	for _, line := range responses {
+		if !strings.HasPrefix(line, "AT") {
+			return line, nil
+		}
+	}
+	return "", fmt.Errorf("no info found for %s", cmd)
 }
 
 // readResponse 从响应通道读取响应
@@ -170,7 +175,7 @@ func (m *Device) readResponse() ([]string, error) {
 			if !ok {
 				return responses, fmt.Errorf("device closed")
 			}
-
+			// 遇到终止响应，返回积累的行
 			responses = append(responses, line)
 			if m.responses.IsFinal(line) {
 				return responses, nil
@@ -235,7 +240,7 @@ func (m *Device) writeString(data string) error {
 		return fmt.Errorf("device closed")
 	}
 
-	m.printf("write cmd: %s", data)
+	m.printf("send command: %s", data)
 
 	// 向串口写入数据
 	n, err := m.port.Write([]byte(data))
@@ -247,37 +252,4 @@ func (m *Device) writeString(data string) error {
 	}
 
 	return nil
-}
-
-// ===== 辅助工具 =====
-
-// parseInt 解析整数
-func parseInt(s string) int {
-	v, _ := strconv.Atoi(s)
-	return v
-}
-
-// hasTerminator 检查命令是否包含任何结束符
-func hasTerminator(cmd string) bool {
-	for _, t := range Terminators {
-		if strings.HasSuffix(cmd, t) {
-			return true
-		}
-	}
-	return false
-}
-
-// parseParam 解析响应内容
-func parseParam(line string) (string, map[int]string) {
-	parts := strings.SplitN(line, ":", 2)
-	if len(parts) == 2 {
-		param := map[int]string{}
-		label := strings.TrimSpace(parts[0])
-		group := strings.Split(strings.TrimSpace(parts[1]), ",")
-		for i, v := range group {
-			param[i] = strings.Trim(strings.TrimSpace(v), `"'`)
-		}
-		return label, param
-	}
-	return line, nil
 }

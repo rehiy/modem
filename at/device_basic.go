@@ -1,6 +1,8 @@
 package at
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ===== 基本控制 =====
 
@@ -57,15 +59,11 @@ func (m *Device) GetBatteryLevel() (int, int, error) {
 		return 0, 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CBC: 0,85 (充电状态,电量百分比)
-		if label == "+CBC" && len(param) >= 2 {
-			return parseInt(param[0]), parseInt(param[1]), nil
-		}
+	param, err := parseResponse(m.commands.BatteryLevel, responses, 2)
+	if err != nil {
+		return 0, 0, err
 	}
-
-	return 0, 0, fmt.Errorf("failed to parse battery level")
+	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
 // GetDeviceTemp 查询设备温度
@@ -75,15 +73,11 @@ func (m *Device) GetDeviceTemp() (int, int, error) {
 		return 0, 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CPMUTEMP: 25,1 (温度,状态)
-		if label == "+CPMUTEMP" && len(param) >= 2 {
-			return parseInt(param[0]), parseInt(param[1]), nil
-		}
+	param, err := parseResponse(m.commands.DeviceTemp, responses, 2)
+	if err != nil {
+		return 0, 0, err
 	}
-
-	return 0, 0, fmt.Errorf("failed to parse device temperature")
+	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
 // GetNetworkTime 查询网络时间
@@ -93,15 +87,11 @@ func (m *Device) GetNetworkTime() (string, error) {
 		return "", err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CCLK: "26/01/13,12:30:45+08"
-		if label == "+CCLK" && len(param) >= 1 {
-			return param[0], nil
-		}
+	param, err := parseResponse(m.commands.NetworkTime, responses, 1)
+	if err != nil {
+		return "", err
 	}
-
-	return "", fmt.Errorf("failed to parse network time")
+	return param[0], nil
 }
 
 // SetTime 设置网络时间
@@ -181,15 +171,9 @@ func (m *Device) GetNumber() (string, int, error) {
 		return "", 0, err
 	}
 
-	for _, line := range responses {
-		label, param := parseParam(line)
-		// 格式: +CNUM: ,"+8613800138000",129
-		if label == "+CNUM" && len(param) >= 2 {
-			number := param[1]
-			tags := parseInt(param[2]) //号码属性
-			return number, tags, nil
-		}
+	param, err := parseResponse(m.commands.Number, responses, 2)
+	if err != nil {
+		return "", 0, err
 	}
-
-	return "", 0, fmt.Errorf("no phone number found")
+	return param[1], parseInt(param[2]), nil
 }

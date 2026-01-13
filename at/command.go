@@ -1,10 +1,5 @@
 package at
 
-import (
-	"fmt"
-	"strings"
-)
-
 // CommandSet 定义可配置的 AT 命令集
 type CommandSet struct {
 	// 基本控制命令
@@ -141,21 +136,4 @@ func DefaultCommandSet() *CommandSet {
 		GPRSRegNotify:    "AT+CGREG",
 		SignalReport:     "AT+CSQ",
 	}
-}
-
-// SimpleQuery 通用简单信息查询函数
-func (m *Device) SimpleQuery(cmd string) (string, error) {
-	responses, err := m.SendCommand(cmd)
-	if err != nil {
-		return "", err
-	}
-
-	// 查找不以AT开头的行
-	for _, line := range responses {
-		if !strings.HasPrefix(line, "AT") {
-			return line, nil
-		}
-	}
-
-	return "", fmt.Errorf("no info found for %s", cmd)
 }
