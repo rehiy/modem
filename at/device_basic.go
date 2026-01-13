@@ -174,7 +174,7 @@ func (m *Device) GetICCID() (string, error) {
 	return m.SimpleQuery(m.commands.ICCID)
 }
 
-// GetPhoneNumber 查询手机号
+// GetNumber 查询手机号
 func (m *Device) GetNumber() (string, int, error) {
 	responses, err := m.SendCommand(m.commands.Number)
 	if err != nil {

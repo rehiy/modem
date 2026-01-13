@@ -11,12 +11,12 @@ import (
 
 // SMS 短信信息
 type SMS struct {
-	PhoneNumber string `json:"phoneNumber"`
-	Text        string `json:"text"`
-	Time        string `json:"time"`
-	Index       int    `json:"index"`   // 首个分片的索引
-	Indices     []int  `json:"indices"` // 所有分片的索引
-	Status      string `json:"status"`  // 短信状态 [PDU: TEXT, 0: "REC UNREAD", 1: "REC READ", 2: "STO UNSENT", 3: "STO SENT", 4: "ALL"]
+	Number  string `json:"number"`
+	Text    string `json:"text"`
+	Time    string `json:"time"`
+	Index   int    `json:"index"`   // 首个分片的索引
+	Indices []int  `json:"indices"` // 所有分片的索引
+	Status  string `json:"status"`  // 短信状态 [PDU: TEXT, 0: "REC UNREAD", 1: "REC READ", 2: "STO UNSENT", 3: "STO SENT", 4: "ALL"]
 }
 
 // SetSMSMode 设置短信模式
@@ -139,12 +139,12 @@ func (m *Device) ListSMSPdu(stat int) ([]SMS, error) {
 			}
 
 			result = append(result, SMS{
-				PhoneNumber: segments[0].OA.Number(),
-				Text:        string(msgBytes),
-				Time:        segments[0].SCTS.Time.Format("2006/01/02 15:04:05"),
-				Index:       indices[mref][0],
-				Indices:     indices[mref],
-				Status:      param[1],
+				Number:  segments[0].OA.Number(),
+				Text:    string(msgBytes),
+				Time:    segments[0].SCTS.Time.Format("2006/01/02 15:04:05"),
+				Index:   indices[mref][0],
+				Indices: indices[mref],
+				Status:  param[1],
 			})
 			delete(indices, mref)
 		}

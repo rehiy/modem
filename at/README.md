@@ -8,10 +8,13 @@
 
 ## 目录
 
+- [模块结构](#模块结构)
 - [功能特性](#功能特性)
 - [快速开始](#快速开始)
 - [核心概念](#核心概念)
 - [设备命令](#设备命令)
+- [网络管理](#网络管理)
+- [通话功能](#通话功能)
 - [短信功能](#短信功能)
 - [通知处理](#通知处理)
 - [高级配置](#高级配置)
@@ -19,14 +22,36 @@
 - [内部机制](#内部机制)
 - [常见问题](#常见问题)
 
+## 模块结构
+
+```text
+at/
+├── base.go          # 核心设备接口、并发控制、读写循环
+├── command.go       # AT 命令集定义
+├── response.go      # 响应类型集定义
+├── notification.go  # 通知类型集定义（URC）
+├── device_basic.go  # 基本控制、设备信息、SIM 卡管理
+├── device_network.go # 网络状态、APN 配置、通知管理
+├── device_call.go   # 语音通话、来电显示、呼叫转移
+├── device_sms.go    # 短信收发（PDU 模式）
+└── README.md        # 本文档
+```
+
+### 依赖模块
+
+- `github.com/rehiy/modem/sms` - 短信编解码（GSM 7-bit、UCS2）
+- `github.com/rehiy/modem/sms/pdumode` - PDU 格式处理
+
 ## 功能特性
 
-- 🚀 **完整的 AT 命令接口** - 基础命令、信息查询、信号质量、网络状态、通话、短信等
+- 🚀 **完整的 AT 命令接口** - 基础命令、设备信息、网络状态、通话、短信等
 - 🎯 **智能响应处理** - 自动识别最终响应（OK/ERROR 等）和通知消息（URC）
 - 🔒 **并发安全** - 使用原子操作和互斥锁保证线程安全
 - ⚙️ **可扩展配置** - 支持自定义命令集、响应集和通知集
-- 📱 **短信功能** - 自动编码检测（ASCII/UCS2）、长短信自动分段
+- 📱 **短信功能** - PDU 模式、长短信自动合并、编码检测
 - 🔔 **通知监听** - 来电、短信、网络状态变化等实时通知
+- 📡 **网络管理** - APN 配置、PDP 上下文、IP 地址查询
+- 📞 **通话管理** - 拨号、接听、挂断、来电显示、呼叫转移
 
 ## 快速开始
 
@@ -49,8 +74,15 @@ import (
 )
 
 func main() {
-    // 1. 创建串口连接（需自行实现 Port 接口）
-    port := openSerialPort("/dev/ttyUSB0", 115200)
+    // 1. 创建串口连接
+    port, err := serial.OpenPort(&serial.Config{
+        Name:        u,      // 串口完整路径
+        Baud:        115200, // 波特率
+        ReadTimeout: 1 * time.Second,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
     defer port.Close()
 
     // 2. 配置通知处理函数
@@ -91,6 +123,7 @@ func main() {
 type Port interface {
     Read(buf []byte) (int, error)
     Write(data []byte) (int, error)
+    Flush() error
     Close() error
 }
 ```
@@ -129,55 +162,172 @@ type Config struct {
 
 ## 设备命令
 
-### 基本命令
+### 基本控制
+
+| 方法 | AT 命令 | 说明 |
+|------|---------|------|
+| `Test()` | `AT` | 测试连接 |
+| `EchoOff()` | `ATE0` | 关闭回显 |
+| `EchoOn()` | `ATE1` | 开启回显 |
+| `Reset()` | `ATZ` | 重启模块 |
+| `FactoryReset()` | `AT&F` | 恢复出厂设置 |
+| `SaveSettings()` | `AT&W` | 保存设置 |
+| `LoadProfile(profile)` | `ATZ<profile>` | 加载配置文件 |
+| `SaveProfile(profile)` | `AT&W<profile>` | 保存配置文件 |
 
 ```go
-device.Test()           // 测试连接
-device.EchoOff()        // 关闭回显
-device.EchoOn()         // 开启回显
-device.Reset()          // 软件复位
-device.FactoryReset()   // 恢复出厂设置
-device.SaveSettings()   // 保存设置
+device.Test()
+device.EchoOff()
+device.Reset()
+device.SaveSettings()
+device.LoadProfile(1)  // 加载配置文件1
 ```
 
-### 信息查询
+### 设备信息
+
+| 方法 | AT 命令 | 返回值 |
+|------|---------|--------|
+| `GetIMEI()` | `AT+CGSN` | IMEI 码 |
+| `GetManufacturer()` | `AT+CGMI` | 制造商 |
+| `GetModel()` | `AT+CGMM` | 型号 |
+| `GetRevision()` | `AT+CGMR` | 版本号 |
+| `GetIMSI()` | `AT+CIMI` | IMSI 码 |
+| `GetICCID()` | `AT+CCID` | ICCID 码 |
+| `GetNumber()` | `AT+CNUM` | 手机号 |
 
 ```go
-// 设备信息
+imei, _ := device.GetIMEI()
 manufacturer, _ := device.GetManufacturer()
 model, _ := device.GetModel()
 revision, _ := device.GetRevision()
-serial, _ := device.GetSerialNumber()
 imsi, _ := device.GetIMSI()
 iccid, _ := device.GetICCID()
-phoneNumber, _ := device.GetPhoneNumber()
-
-// 运营商信息
-mode, operator, format, _ := device.GetOperator()
-// mode: 网络选择模式 0-4
-// format: 格式编号
-// operator: 运营商代码（如 "C46001"）
-// act: 无线接入技术类型
+number, _, _ := device.GetNumber()
 ```
 
-### 信号和网络
+### 设备状态
+
+| 方法 | AT 命令 | 返回值 | 说明 |
+|------|---------|--------|------|
+| `GetBatteryLevel()` | `AT+CBC` | `(int, int)` | 充电状态, 电量百分比 |
+| `GetDeviceTemp()` | `AT+CPMUTEMP` | `(int, int)` | 温度, 状态 |
+| `GetNetworkTime()` | `AT+CCLK?` | `(string)` | 网络时间 |
+| `SetTime(timeStr)` | `AT+CCLK` | - | 设置时间 |
 
 ```go
-// 信号质量
-rssi, ber, _ := device.GetSignalQuality()
-// rssi: 信号强度 0-31（99 表示未知）
-// ber: 误码率 0-7（99 表示未知）
+charging, level, _ := device.GetBatteryLevel()
+temp, _, _ := device.GetDeviceTemp()
+timeStr, _ := device.GetNetworkTime()
 
-// 网络注册状态
-n, stat, _ := device.GetNetworkStatus()
-// n: 禁用/启用状态
-// stat: 注册状态 0-5
-
-// GPRS 注册状态
-n, stat, _ := device.GetGPRSStatus()
+// 设置时间格式: "YY/MM/DD,HH:MM:SS+TZ"
+device.SetTime("26/01/13,12:30:45+08")
 ```
 
-### 通话功能
+### SIM 卡管理
+
+| 方法 | AT 命令 | 说明 |
+|------|---------|------|
+| `GetSIMStatus()` | `AT+CPIN?` | 查询 SIM 状态 |
+| `VerifyPIN(pin)` | `AT+CPIN=<pin>` | 验证 PIN 码 |
+| `ChangePIN(old, new)` | `AT+CPWD=<old>,<new>` | 修改 PIN 码 |
+| `UnlockPIN(pinType, enable, pwd)` | `AT+CLCK` | 锁定/解锁 PIN |
+
+```go
+status, _ := device.GetSIMStatus()
+// 返回值: "READY", "SIM PIN", "SIM PUK" 等
+
+device.VerifyPIN("1234")
+device.ChangePIN("1234", "5678")
+
+// 启用 PIN 锁
+device.UnlockPIN("SC", true, "5678")
+```
+
+## 网络管理
+
+### 网络状态
+
+| 方法 | AT 命令 | 返回值 | 说明 |
+|------|---------|--------|------|
+| `GetOperator()` | `AT+COPS?` | `(int, int, string, int)` | 模式, 格式, 运营商, 接入技术 |
+| `GetNetworkMode()` | `AT+CNMP?` | `(int)` | 网络模式 |
+| `SetNetworkMode(mode)` | `AT+CNMP` | - | 设置网络模式 |
+| `GetNetworkStatus()` | `AT+CREG?` | `(int, int)` | 通知模式, 注册状态 |
+| `GetGPRSStatus()` | `AT+CGREG?` | `(int, int)` | 通知模式, 注册状态 |
+| `GetSignalQuality()` | `AT+CSQ` | `(int, int)` | 信号强度, 误码率 |
+
+```go
+mode, _, operator, act, _ := device.GetOperator()
+log.Printf("运营商: %s, 接入技术: %d", operator, act)
+
+networkMode, _ := device.GetNetworkMode()
+// 常用模式: 2=AUTOMATIC, 13=GSM ONLY, 38=LTE ONLY, 51=SA/NSA
+device.SetNetworkMode(38)
+
+n, stat, _ := device.GetNetworkStatus()
+// 注册状态: 0=未注册, 1=已注册本地, 2=未注册但正在搜索, 5=已注册漫游
+
+rssi, ber, _ := device.GetSignalQuality()
+// RSSI: 0-31 (31=最佳, 99=未知), BER: 0-7 (0=最佳, 99=未知)
+```
+
+### 网络配置
+
+| 方法 | AT 命令 | 参数 | 说明 |
+|------|---------|------|------|
+| `GetAPN(cid)` | `AT+CGDCONT?` | cid | 查询 APN 配置 |
+| `SetAPN(cid, pdpType, apn)` | `AT+CGDCONT` | cid, pdpType, apn | 设置 APN |
+| `GetPDPContext(cid)` | `AT+CGACT?` | cid | 查询 PDP 上下文状态 |
+| `SetPDPContext(cid, state)` | `AT+CGACT` | cid, state | 激活/停用 PDP |
+| `GetIPAddress(cid)` | `AT+CGPADDR?` | cid | 查询 IP 地址 |
+
+```go
+// 设置 APN
+device.SetAPN(1, "IP", "cmnet")
+
+// 激活 PDP 上下文
+device.SetPDPContext(1, 1)
+
+// 查询 IP 地址
+cid, ip, _ := device.GetIPAddress(1)
+log.Printf("CID: %d, IP: %s", cid, ip)
+```
+
+### 通知管理
+
+| 方法 | AT 命令 | 参数 | 说明 |
+|------|---------|------|------|
+| `GetNetworkRegNotify()` | `AT+CREG?` | - | 查询网络注册通知状态 |
+| `SetNetworkRegNotify(mode)` | `AT+CREG` | mode | 设置网络注册通知 |
+| `GetGPRSRegNotify()` | `AT+CGREG?` | - | 查询 GPRS 注册通知状态 |
+| `SetGPRSRegNotify(mode)` | `AT+CGREG` | mode | 设置 GPRS 注册通知 |
+| `SetSignalReport(mode, interval)` | `AT+CSQ` | mode, interval | 设置信号质量上报 |
+
+```go
+// 启用网络注册通知并显示位置信息
+device.SetNetworkRegNotify(2)
+
+// 启用 GPRS 注册通知
+device.SetGPRSRegNotify(2)
+
+// 开启信号质量上报，间隔 10 秒
+device.SetSignalReport(1, 10)
+```
+
+## 通话功能
+
+| 方法 | AT 命令 | 说明 |
+|------|---------|------|
+| `Dial(number)` | `ATD<number>` | 拨打电话 |
+| `Answer()` | `ATA` | 接听电话 |
+| `Hangup()` | `ATH` | 挂断电话 |
+| `GetCallerID()` | `AT+CLIP?` | 查询来电显示状态 |
+| `SetCallerID(enable)` | `AT+CLIP` | 设置来电显示 |
+| `GetCallState()` | `AT+CLCC` | 查询通话状态 |
+| `GetCallWait()` | `AT+CCWA?` | 查询呼叫等待状态 |
+| `SetCallWait(enable)` | `AT+CCWA` | 设置呼叫等待 |
+| `GetCallFWD(reason)` | `AT+CCFC?` | 查询呼叫转移状态 |
+| `SetCallFWD(reason, enable, number)` | `AT+CCFC` | 设置呼叫转移 |
 
 ```go
 // 拨打电话
@@ -190,50 +340,106 @@ device.Hangup()
 // 来电显示
 enabled, _ := device.GetCallerID()
 device.SetCallerID(true)
+
+// 查询通话状态
+calls, _ := device.GetCallState()
+for _, call := range calls {
+    log.Printf("ID: %d, 号码: %s, 状态: %d, 方向: %d",
+        call.ID, call.Number, call.Status, call.Dir)
+}
+```
+
+### CallInfo 结构
+
+```go
+type CallInfo struct {
+    ID     int    // 通话标识
+    Dir    int    // 方向 [0: 呼出, 1: 呼入]
+    Status int    // 状态 [0: 活动中, 1: 保持中, 2: 拨号中, 3: 响铃中, 4: 来电中]
+    Mode   int    // 模式 [0: 语音, 1: 数据, 2: 传真]
+    Number string // 号码
+    Type   int    // 号码类型 [129: 国际, 161: 国内]
+    Multip int    // 多方通话
+}
+```
+
+### 呼叫转移
+
+```go
+// 设置无条件呼叫转移
+device.SetCallFWD(0, true, "+8613900000000")
+
+// 查询呼叫转移状态
+enabled, number, _ := device.GetCallFWD(0)
+log.Printf("呼叫转移: %v, 转移到: %s", enabled, number)
 ```
 
 ## 短信功能
 
 ### 发送短信
 
+| 方法 | 说明 |
+|------|------|
+| `SetSMSMode(v)` | 设置短信模式 (0: PDU 模式, 1: TEXT 模式) |
+| `SendSMSPdu(number, message)` | 发送短信（PDU 模式） |
+
 ```go
-// 自动处理中文和长短信
-device.SendSMS("+8613800138000", "Hello from Go!")
-device.SendSMS("+8613800138000", "你好，这是一条中文短信！")
+// 设置为 PDU 模式
+device.SetSMSMode(0)
+
+// 发送短信
+device.SendSMSPdu("+8613800138000", "Hello from Go!")
+device.SendSMSPdu("+8613800138000", "你好，这是一条中文短信！")
 ```
 
-**自动编码处理规则：**
+### 短信列表
 
-| 字符类型 | 编码方式 | 最大长度 | 分段长度 |
-|---------|---------|---------|---------|
-| 纯 ASCII | GSM 7-bit | 160 字符 | 153 字符/段 |
-| 包含中文 | UCS2 | 70 字符 | 67 字符/段 |
-
-### 短信管理
+| 方法 | AT 命令 | 参数 | 说明 |
+|------|---------|------|------|
+| `ListSMSPdu(stat)` | `AT+CMGL=<stat>` | stat | 获取短信列表 |
 
 ```go
-// 列出短信
-list, _ := device.ListSMSPdu()
+// 列出所有短信
+list, _ := device.ListSMSPdu(4)
 for _, sms := range list {
-    fmt.Printf("来自: %s\n内容: %s\n时间: %s\n",
-        sms.PhoneNumber, sms.Message, sms.Timestamp)
+    log.Printf("来自: %s, 内容: %s, 时间: %s",
+        sms.Number, sms.Text, sms.Time)
 }
+```
 
-// 删除短信
-device.DeleteSMS(1) // 删除指定索引的短信
+### 短信删除
+
+| 方法 | AT 命令 | 参数 | 说明 |
+|------|---------|------|------|
+| `DeleteSMS(indices)` | `AT+CMGD=<index>` | indices | 批量删除指定索引的短信 |
+
+```go
+// 删除指定索引的短信
+device.DeleteSMS([]int{1, 2, 3})
 ```
 
 ### SMS 结构
 
 ```go
 type SMS struct {
-    Index       int    // 短信索引
-    Status      string // 状态：REC UNREAD, REC READ, STO UNSENT, STO SENT
-    PhoneNumber string // 电话号码
-    Timestamp   string // 时间戳
-    Message     string // 短信内容
+    Number  string `json:"number"`  // 电话号码
+    Text    string `json:"text"`    // 短信内容
+    Time    string `json:"time"`    // 时间戳
+    Index   int    `json:"index"`   // 首个分片的索引
+    Indices []int  `json:"indices"` // 所有分片的索引
+    Status  string `json:"status"`  // 短信状态
 }
 ```
+
+### 短信状态
+
+| 状态值 | 说明 |
+|--------|------|
+| 0 | REC UNREAD - 未读短信 |
+| 1 | REC READ - 已读短信 |
+| 2 | STO UNSENT - 未发短信 |
+| 3 | STO SENT - 已发短信 |
+| 4 | ALL - 全部短信 |
 
 ## 通知处理
 
@@ -280,12 +486,11 @@ urcHandler := func(label string, param map[int]string) {
 
 ```go
 commands := at.DefaultCommandSet()
-commands.SignalQuality = "AT^HCSQ"  // 华为扩展命令
-commands.ICCID = "AT^ICCID?"
+commands.Signal = "AT^HCSQ"  // 华为扩展命令
 
 config := &at.Config{
     Timeout:    5 * time.Second,
-    CommandSet: &commands,
+    CommandSet: commands,
 }
 ```
 
@@ -298,7 +503,7 @@ responses := at.DefaultResponseSet()
 responses.CustomFinal = []string{"CUSTOM_OK", "COMPLETE"}
 
 config := &at.Config{
-    ResponseSet: &responses,
+    ResponseSet: responses,
 }
 ```
 
@@ -313,7 +518,7 @@ notifications.NetworkReg = "^CREG"
 notifications.IndicationEvent = "^CIEV"
 
 config := &at.Config{
-    NotificationSet: &notifications,
+    NotificationSet: notifications,
 }
 ```
 
