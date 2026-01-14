@@ -94,8 +94,6 @@ func (m *Device) GetSmsCenter() (string, int, error) {
 		return "", 0, err
 	}
 
-	m.printf("param: %v", param)
-
 	return param[0], parseInt(param[1]), nil
 }
 
