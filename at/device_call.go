@@ -26,6 +26,8 @@ func (m *Device) GetCallerID() (bool, error) {
 		return false, err
 	}
 
+	// 响应格式: "+CLIP: <n>"
+	// n: 来电显示状态 [0: 禁用, 1: 启用]
 	param, err := parseResponse(m.commands.CallerID, responses, 1)
 	if err != nil {
 		return false, err
@@ -67,6 +69,14 @@ func (m *Device) GetCallState() ([]CallInfo, error) {
 	for _, line := range responses {
 		respLabel, param := parseParam(line)
 		if respLabel == label && len(param) >= 7 {
+			// 响应格式: "+CLCC: <id>,<dir>,<status>,<mode>,<multip>,<number>,<type>"
+			// id: 通话标识
+			// dir: 方向 [0: MO呼出, 1: MT呼入]
+			// status: 状态 [0: 活动中, 1: 保持中, 2: 拨号中, 3: 响铃中, 4: 来电中]
+			// mode: 模式 [0: 语音, 1: 数据, 2: 传真]
+			// multip: 多方通话
+			// number: 号码
+			// type: 号码类型 [129: 国际, 161: 国内]
 			calls = append(calls, CallInfo{
 				ID:     parseInt(param[0]),
 				Dir:    parseInt(param[1]),
@@ -92,6 +102,9 @@ func (m *Device) GetCallWait() (bool, error) {
 		return false, err
 	}
 
+	// 响应格式: "+CCWA: <status>,<class1>,[<class2>,...]"
+	// status: 呼叫等待状态 [0: 禁用, 1: 启用]
+	// class: 通话类型 [1: 语音, 2: 数据, 4: 传真, 7: 所有]
 	param, err := parseResponse(m.commands.CallWait, responses, 2)
 	if err != nil {
 		return false, err
@@ -117,6 +130,11 @@ func (m *Device) GetCallFWD(reason int) (bool, string, error) {
 		return false, "", err
 	}
 
+	// 响应格式: "+CCFC: <status>,<class>,<number>,<type>"
+	// status: 状态 [0: 禁用, 1: 启用]
+	// class: 通话类型 [1: 语音, 2: 数据, 4: 传真, 7: 所有]
+	// number: 转移号码
+	// type: 号码类型 [129: 国际, 161: 国内]
 	param, err := parseResponse(m.commands.CallFWD, responses, 4)
 	if err != nil {
 		return false, "", err

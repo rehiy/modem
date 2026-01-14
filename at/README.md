@@ -16,6 +16,10 @@
 - [网络管理](#网络管理)
 - [通话功能](#通话功能)
 - [短信功能](#短信功能)
+  - [短信配置](#短信配置)
+  - [发送短信](#发送短信)
+  - [短信息列表](#短信息列表)
+  - [短信息删除](#短信息删除)
 - [通知处理](#通知处理)
 - [高级配置](#高级配置)
 - [最佳实践](#最佳实践)
@@ -75,8 +79,9 @@ import (
 
 func main() {
     // 1. 创建串口连接
+    portName := "/dev/ttyUSB0" // 串口完整路径
     port, err := serial.OpenPort(&serial.Config{
-        Name:        u,      // 串口完整路径
+        Name:        portName,
         Baud:        115200, // 波特率
         ReadTimeout: 1 * time.Second,
     })
@@ -133,6 +138,17 @@ type Port interface {
 - [github.com/tarm/serial](https://github.com/tarm/serial)
 - [go.bug.st/serial](https://github.com/bugst/go-serial)
 
+### 通知处理函数
+
+`UrcHandler` 是处理 URC（Unsolicited Result Code）通知的回调函数类型：
+
+```go
+type UrcHandler func(label string, param map[int]string)
+```
+
+- `label`: 通知标签（如 `+CMTI`, `RING`, `+CREG`）
+- `param`: 通知参数映射（索引从 0 开始）
+
 ### Device 方法
 
 ```go
@@ -185,15 +201,15 @@ device.LoadProfile(1)  // 加载配置文件1
 
 ### 设备信息
 
-| 方法 | AT 命令 | 返回值 |
-|------|---------|--------|
-| `GetIMEI()` | `AT+CGSN` | IMEI 码 |
-| `GetManufacturer()` | `AT+CGMI` | 制造商 |
-| `GetModel()` | `AT+CGMM` | 型号 |
-| `GetRevision()` | `AT+CGMR` | 版本号 |
-| `GetIMSI()` | `AT+CIMI` | IMSI 码 |
-| `GetICCID()` | `AT+CCID` | ICCID 码 |
-| `GetNumber()` | `AT+CNUM` | 手机号 |
+| 方法 | AT 命令 | 返回值 | 说明 |
+|------|---------|--------|------|
+| `GetIMEI()` | `AT+CGSN` | `(string)` | IMEI 码 |
+| `GetManufacturer()` | `AT+CGMI` | `(string)` | 制造商 |
+| `GetModel()` | `AT+CGMM` | `(string)` | 型号 |
+| `GetRevision()` | `AT+CGMR` | `(string)` | 版本号 |
+| `GetIMSI()` | `AT+CIMI` | `(string)` | IMSI 码 |
+| `GetICCID()` | `AT+CCID` | `(string)` | ICCID 码 |
+| `GetNumber()` | `AT+CNUM` | `(string, int)` | 手机号, 号码类型 |
 
 ```go
 imei, _ := device.GetIMEI()
@@ -202,7 +218,8 @@ model, _ := device.GetModel()
 revision, _ := device.GetRevision()
 imsi, _ := device.GetIMSI()
 iccid, _ := device.GetICCID()
-number, _, _ := device.GetNumber()
+number, numType, _ := device.GetNumber()
+// numType: 129=国际, 161=国内
 ```
 
 ### 设备状态
@@ -216,8 +233,16 @@ number, _, _ := device.GetNumber()
 
 ```go
 charging, level, _ := device.GetBatteryLevel()
-temp, _, _ := device.GetDeviceTemp()
+// charging: 0=未充电, 1=充电中
+// level: 0-100 电量百分比
+log.Printf("充放电: %d, 电量: %d%%", charging, level)
+
+temp, status, _ := device.GetDeviceTemp()
+// temp: 温度值
+// status: 0=正常, 1=过热
+
 timeStr, _ := device.GetNetworkTime()
+// 时间格式: "YY/MM/DD,HH:MM:SS+TZ"
 
 // 设置时间格式: "YY/MM/DD,HH:MM:SS+TZ"
 device.SetTime("26/01/13,12:30:45+08")
@@ -258,6 +283,8 @@ device.UnlockPIN("SC", true, "5678")
 
 ```go
 mode, _, operator, act, _ := device.GetOperator()
+// mode: 0=自动, 1=手动, 2=取消注册
+// act: 0=GSM, 2=UTRAN, 3=GSM w/EGPRS, 4=UTRAN w/HSDPA, 7=E-UTRA
 log.Printf("运营商: %s, 接入技术: %d", operator, act)
 
 networkMode, _ := device.GetNetworkMode()
@@ -265,27 +292,34 @@ networkMode, _ := device.GetNetworkMode()
 device.SetNetworkMode(38)
 
 n, stat, _ := device.GetNetworkStatus()
-// 注册状态: 0=未注册, 1=已注册本地, 2=未注册但正在搜索, 5=已注册漫游
+// n: 0=禁用, 1=启用, 2=启用并显示位置信息
+// stat: 0=未注册, 1=已注册本地, 2=未注册但正在搜索, 3=注册被拒绝, 5=已注册漫游
 
 rssi, ber, _ := device.GetSignalQuality()
-// RSSI: 0-31 (31=最佳, 99=未知), BER: 0-7 (0=最佳, 99=未知)
+// rssi: 0-31 (31=最佳, 99=未知), dBm = -113 + 2*rssi
+// ber: 0-7 (0=最佳, 99=未知)
+log.Printf("信号: RSSI=%d, BER=%d", rssi, ber)
 ```
 
 ### 网络配置
 
-| 方法 | AT 命令 | 参数 | 说明 |
-|------|---------|------|------|
-| `GetAPN(cid)` | `AT+CGDCONT?` | cid | 查询 APN 配置 |
-| `SetAPN(cid, pdpType, apn)` | `AT+CGDCONT` | cid, pdpType, apn | 设置 APN |
-| `GetPDPContext(cid)` | `AT+CGACT?` | cid | 查询 PDP 上下文状态 |
-| `SetPDPContext(cid, state)` | `AT+CGACT` | cid, state | 激活/停用 PDP |
-| `GetIPAddress(cid)` | `AT+CGPADDR?` | cid | 查询 IP 地址 |
+| 方法 | AT 命令 | 参数 | 返回值 | 说明 |
+|------|---------|------|--------|------|
+| `GetAPN(cid)` | `AT+CGDCONT?` | cid | `(int, string, string)` | cid, pdpType, apn |
+| `SetAPN(cid, pdpType, apn)` | `AT+CGDCONT` | cid, pdpType, apn | - | 设置 APN |
+| `GetPDPContext(cid)` | `AT+CGACT?` | cid | `(int, int)` | cid, state |
+| `SetPDPContext(cid, state)` | `AT+CGACT` | cid, state | - | 激活/停用 PDP |
+| `GetIPAddress(cid)` | `AT+CGPADDR?` | cid | `(int, string)` | cid, ipAddress |
 
 ```go
 // 设置 APN
+// cid: 上下文标识符
+// pdpType: PDP 类型 ["IP", "IPV6", "IPV4V6"]
+// apn: 接入点名称
 device.SetAPN(1, "IP", "cmnet")
 
 // 激活 PDP 上下文
+// state: 0=停用, 1=激活
 device.SetPDPContext(1, 1)
 
 // 查询 IP 地址
@@ -295,39 +329,45 @@ log.Printf("CID: %d, IP: %s", cid, ip)
 
 ### 通知管理
 
-| 方法 | AT 命令 | 参数 | 说明 |
-|------|---------|------|------|
-| `GetNetworkRegNotify()` | `AT+CREG?` | - | 查询网络注册通知状态 |
-| `SetNetworkRegNotify(mode)` | `AT+CREG` | mode | 设置网络注册通知 |
-| `GetGPRSRegNotify()` | `AT+CGREG?` | - | 查询 GPRS 注册通知状态 |
-| `SetGPRSRegNotify(mode)` | `AT+CGREG` | mode | 设置 GPRS 注册通知 |
-| `SetSignalReport(mode, interval)` | `AT+CSQ` | mode, interval | 设置信号质量上报 |
+| 方法 | AT 命令 | 参数 | 返回值 | 说明 |
+|------|---------|------|--------|------|
+| `GetNetworkRegNotify()` | `AT+CREG?` | - | `(int)` | 通知模式 |
+| `SetNetworkRegNotify(mode)` | `AT+CREG` | mode | - | 设置网络注册通知 |
+| `GetGPRSRegNotify()` | `AT+CGREG?` | - | `(int)` | 通知模式 |
+| `SetGPRSRegNotify(mode)` | `AT+CGREG` | mode | - | 设置 GPRS 注册通知 |
+| `SetSignalReport(mode, interval)` | `AT+CSQ` | mode, interval | - | 设置信号质量上报 |
 
 ```go
+// 查询网络注册通知状态
+mode, _ := device.GetNetworkRegNotify()
+// mode: 0=禁用, 1=启用, 2=启用并显示位置信息
+
 // 启用网络注册通知并显示位置信息
 device.SetNetworkRegNotify(2)
 
 // 启用 GPRS 注册通知
 device.SetGPRSRegNotify(2)
 
-// 开启信号质量上报，间隔 10 秒
+// 开启信号质量上报
+// mode: 0=关闭, 1=开启
+// interval: 上报间隔(秒) [1-255]
 device.SetSignalReport(1, 10)
 ```
 
 ## 通话功能
 
-| 方法 | AT 命令 | 说明 |
-|------|---------|------|
-| `Dial(number)` | `ATD<number>` | 拨打电话 |
-| `Answer()` | `ATA` | 接听电话 |
-| `Hangup()` | `ATH` | 挂断电话 |
-| `GetCallerID()` | `AT+CLIP?` | 查询来电显示状态 |
-| `SetCallerID(enable)` | `AT+CLIP` | 设置来电显示 |
-| `GetCallState()` | `AT+CLCC` | 查询通话状态 |
-| `GetCallWait()` | `AT+CCWA?` | 查询呼叫等待状态 |
-| `SetCallWait(enable)` | `AT+CCWA` | 设置呼叫等待 |
-| `GetCallFWD(reason)` | `AT+CCFC?` | 查询呼叫转移状态 |
-| `SetCallFWD(reason, enable, number)` | `AT+CCFC` | 设置呼叫转移 |
+| 方法 | AT 命令 | 返回值 | 说明 |
+|------|---------|--------|------|
+| `Dial(number)` | `ATD<number>` | - | 拨打电话 |
+| `Answer()` | `ATA` | - | 接听电话 |
+| `Hangup()` | `ATH` | - | 挂断电话 |
+| `GetCallerID()` | `AT+CLIP?` | `(bool)` | 来电显示状态 |
+| `SetCallerID(enable)` | `AT+CLIP` | enable | - | 设置来电显示 |
+| `GetCallState()` | `AT+CLCC` | `([]CallInfo)` | 通话状态列表 |
+| `GetCallWait()` | `AT+CCWA?` | `(bool)` | 呼叫等待状态 |
+| `SetCallWait(enable)` | `AT+CCWA` | enable | - | 设置呼叫等待 |
+| `GetCallFWD(reason)` | `AT+CCFC?` | `(bool, string)` | 状态, 转移号码 |
+| `SetCallFWD(reason, enable, number)` | `AT+CCFC` | reason, enable, number | - | 设置呼叫转移 |
 
 ```go
 // 拨打电话
@@ -339,6 +379,7 @@ device.Hangup()
 
 // 来电显示
 enabled, _ := device.GetCallerID()
+// enabled: true=启用, false=禁用
 device.SetCallerID(true)
 
 // 查询通话状态
@@ -367,20 +408,61 @@ type CallInfo struct {
 
 ```go
 // 设置无条件呼叫转移
+// reason: 转移原因
+//   0=无条件
+//   1=遇忙
+//   2=无应答
+//   3=无法接通
+//   4=所有
+// enable: true=启用, false=禁用
+// number: 转移号码
 device.SetCallFWD(0, true, "+8613900000000")
 
 // 查询呼叫转移状态
 enabled, number, _ := device.GetCallFWD(0)
+// enabled: true=已启用, false=未启用
 log.Printf("呼叫转移: %v, 转移到: %s", enabled, number)
 ```
 
 ## 短信功能
 
+### 短信配置
+
+| 方法 | AT 命令 | 参数 | 返回值 | 说明 |
+|------|---------|------|--------|------|
+| `GetSmsMode()` | `AT+CMGF?` | - | `(int)` | 获取短信模式 |
+| `SetSmsMode(v)` | `AT+CMGF` | v | - | 设置短信模式 |
+| `GetSmsStorage()` | `AT+CPMS?` | - | `(string, string, string)` | 获取存储配置 |
+| `SetSmsStorage(v1, v2, v3)` | `AT+CPMS` | v1, v2, v3 | - | 设置存储位置 |
+| `GetSmsCenter()` | `AT+CSCA?` | - | `(string)` | 获取短信中心号码 |
+| `SetSmsCenter(number)` | `AT+CSCA` | number | - | 设置短信中心号码 |
+
+```go
+// 查询短信模式
+mode, _ := device.GetSmsMode()
+// 返回值: 0=PDU模式, 1=TEXT模式
+
+// 设置为 PDU 模式
+device.SetSmsMode(0)
+
+// 查询存储配置
+readStore, writeStore, receiveStore, _ := device.GetSmsStorage()
+// ME=手机内存, SM=SIM卡存储
+
+// 设置存储位置（读、写、接收都使用手机内存）
+device.SetSmsStorage("ME", "ME", "ME")
+
+// 查询短信中心号码
+center, _ := device.GetSmsCenter()
+
+// 设置短信中心号码
+device.SetSmsCenter("+8613800100500")
+```
+
 ### 发送短信
 
 | 方法 | 说明 |
 |------|------|
-| `SetSmsMode(v)` | 设置短信模式 (0: PDU 模式, 1: TEXT 模式) |
 | `SendSmsPdu(number, message)` | 发送短信（PDU 模式） |
 
 ```go
@@ -430,6 +512,14 @@ type Sms struct {
     Status  string `json:"status"`  // 短信状态
 }
 ```
+
+**字段说明：**
+- `Number`: 发送者电话号码
+- `Text`: 短信文本内容（自动合并长短信）
+- `Time`: 短信时间，格式为 "2006/01/02 15:04:05"
+- `Index`: 首个分片的索引位置
+- `Indices`: 所有分片的索引列表（长短信会有多个分片）
+- `Status`: 短信状态字符串
 
 ### 短信状态
 

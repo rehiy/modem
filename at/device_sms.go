@@ -26,10 +26,61 @@ func (m *Device) SetSmsMode(v int) error {
 	return m.SendCommandExpect(cmd, "OK")
 }
 
+// GetSmsMode 获取短信模式
+// 返回 [0: PDU 模式, 1: TEXT 模式]
+func (m *Device) GetSmsMode() (int, error) {
+	responses, err := m.SendCommand(m.commands.SmsFormat + "?")
+	if err != nil {
+		return 0, err
+	}
+
+	// 响应格式: "+CMGF: <mode>"
+	param, err := parseResponse(m.commands.SmsFormat+"?", responses, 1)
+	if err != nil {
+		return 0, err
+	}
+
+	return parseInt(param[0]), nil
+}
+
 // SetSmsStorage 设置短信存储
-// v "ME","ME","ME" [ME: 手机内存, SM: 短信存储]
-func (m *Device) SetSmsStorage(v string) error {
-	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SmsStore, v)
+// v [ME: 手机内存, SM: 短信存储]
+func (m *Device) SetSmsStorage(v1, v2, v3 string) error {
+	cmd := fmt.Sprintf("%s=\"%s\",\"%s\",\"%s\"", m.commands.SmsStore, v1, v2, v3)
+	return m.SendCommandExpect(cmd, "OK")
+}
+
+// GetSmsStorage 获取短信存储配置
+// 返回 (读存储, 写存储, 接收存储)
+func (m *Device) GetSmsStorage() (string, string, string, error) {
+	responses, err := m.SendCommand(m.commands.SmsStore + "?")
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// 响应格式: "+CPMS: <mem1>,<used1>,<total1>,<mem2>,<used2>,<total2>,<mem3>,<used3>,<total3>"
+	// mem1: 读取短信的存储位置
+	// mem2: 写入短信的存储位置
+	// mem3: 接收短信的存储位置
+	param, err := parseResponse(m.commands.SmsStore+"?", responses, 7)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return param[0], param[3], param[6], nil
+}
+
+// GetSmsCenter 获取短信中心号码
+func (m *Device) GetSmsCenter() (string, error) {
+	// 响应格式: "+CSCA: <number>,<tosca>"
+	// number: 短信中心号码
+	// tosca: 号码类型
+	return m.SimpleQuery(m.commands.SmsCenter + "?")
+}
+
+// SetSmsCenter 设置短信中心号码
+func (m *Device) SetSmsCenter(number string) error {
+	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SmsCenter, number)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
@@ -91,6 +142,12 @@ func (m *Device) ListSmsPdu(stat int) ([]Sms, error) {
 	collector := sms.NewCollector()
 	defer collector.Close() // 确保资源释放
 
+	// 响应格式: "+CMGL: <index>,<stat>,[<alpha>],<length>"
+	// index: 短信索引
+	// stat: 状态 [0: REC UNREAD, 1: REC READ, 2: STO UNSENT, 3: STO SENT]
+	// alpha: 发送者名称
+	// length: 长度
+	// 下一行: PDU 十六进制数据
 	expectedLabel := getCommandResponseLabel(m.commands.ListSms)
 	for i, l := 0, len(responses); i < l; {
 		label, param := parseParam(responses[i])

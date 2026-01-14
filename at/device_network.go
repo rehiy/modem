@@ -11,6 +11,11 @@ func (m *Device) GetOperator() (int, int, string, int, error) {
 		return 0, 0, "", 0, err
 	}
 
+	// 响应格式: "+COPS: <mode>,<format>,<oper>,<AcT>"
+	// mode: 选择模式 [0: 自动, 1: 手动, 2: 取消注册]
+	// format: 格式 [0: 长字母数字, 1: 短字母数字, 2: 数字]
+	// oper: 运营商名称
+	// AcT: 接入技术 [0: GSM, 2: UTRAN, 3: GSM w/EGPRS, 4: UTRAN w/HSDPA, 7: E-UTRA]
 	param, err := parseResponse(m.commands.Operator, responses, 3)
 	if err != nil {
 		return 0, 0, "", 0, err
@@ -25,6 +30,8 @@ func (m *Device) GetNetworkMode() (int, error) {
 		return 0, err
 	}
 
+	// 响应格式: "+CNMP: <mode>"
+	// mode: 网络模式 [2: 自动, 13: GSM ONLY, 38: LTE ONLY, 51: SA/NSA]
 	param, err := parseResponse(m.commands.NetworkMode, responses, 1)
 	if err != nil {
 		return 0, err
@@ -46,6 +53,9 @@ func (m *Device) GetNetworkStatus() (int, int, error) {
 		return 0, 0, err
 	}
 
+	// 响应格式: "+CREG: <n>,<stat>"
+	// n: 网络注册通知方式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
+	// stat: 注册状态 [0: 未注册, 1: 已注册, 2: 未注册但在搜索, 3: 注册被拒绝, 5: 已注册漫游]
 	param, err := parseResponse(m.commands.NetworkReg, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -60,6 +70,9 @@ func (m *Device) GetGPRSStatus() (int, int, error) {
 		return 0, 0, err
 	}
 
+	// 响应格式: "+CGREG: <n>,<stat>"
+	// n: GPRS 注册通知方式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
+	// stat: 注册状态 [0: 未注册, 1: 已注册, 2: 未注册但在搜索, 3: 注册被拒绝, 5: 已注册漫游]
 	param, err := parseResponse(m.commands.GPRSReg, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -74,6 +87,9 @@ func (m *Device) GetSignalQuality() (int, int, error) {
 		return 0, 0, err
 	}
 
+	// 响应格式: "+CSQ: <rssi>,<ber>"
+	// rssi: 信号强度 [0-31, 99: 未知], 转换公式: dBm = -113 + 2*rssi
+	// ber: 误码率 [0-7, 99: 未知]
 	param, err := parseResponse(m.commands.Signal, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -94,6 +110,10 @@ func (m *Device) GetAPN(cid int) (int, string, string, error) {
 		return cid == 0 || parseInt(param[0]) == cid
 	}
 
+	// 响应格式: "+CGDCONT: <cid>,<pdpType>,<apn>,[...]"
+	// cid: 上下文标识符
+	// pdpType: PDP 类型 ["IP", "IPV6", "IPV4V6"]
+	// apn: 接入点名称
 	param, err := parseResponseFiltered(m.commands.APN, responses, 3, filter)
 	if err != nil {
 		return 0, "", "", err
@@ -122,6 +142,9 @@ func (m *Device) GetPDPContext(cid int) (int, int, error) {
 		return cid == 0 || parseInt(param[0]) == cid
 	}
 
+	// 响应格式: "+CGACT: <cid>,<state>"
+	// cid: 上下文标识符
+	// state: 状态 [0: 停用, 1: 激活]
 	param, err := parseResponseFiltered(m.commands.PDPContext, responses, 2, filter)
 	if err != nil {
 		return 0, 0, err
@@ -148,6 +171,9 @@ func (m *Device) GetIPAddress(cid int) (int, string, error) {
 		return cid == 0 || parseInt(param[0]) == cid
 	}
 
+	// 响应格式: "+CGPADDR: <cid>,<ipAddress>"
+	// cid: 上下文标识符
+	// ipAddress: IP 地址
 	param, err := parseResponseFiltered(m.commands.IPAddress, responses, 2, filter)
 	if err != nil {
 		return 0, "", err
@@ -164,6 +190,8 @@ func (m *Device) GetNetworkRegNotify() (int, error) {
 		return 0, err
 	}
 
+	// 响应格式: "+CREG: <n>"
+	// n: 网络注册通知方式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
 	param, err := parseResponse(m.commands.NetworkRegNotify, responses, 1)
 	if err != nil {
 		return 0, err
@@ -185,6 +213,8 @@ func (m *Device) GetGPRSRegNotify() (int, error) {
 		return 0, err
 	}
 
+	// 响应格式: "+CGREG: <n>"
+	// n: GPRS 注册通知方式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
 	param, err := parseResponse(m.commands.GPRSRegNotify, responses, 1)
 	if err != nil {
 		return 0, err

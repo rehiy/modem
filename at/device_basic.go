@@ -59,6 +59,9 @@ func (m *Device) GetBatteryLevel() (int, int, error) {
 		return 0, 0, err
 	}
 
+	// 响应格式: "+CBC: <bcs>,<bcl>"
+	// bcs: 电池充电状态 [0: 未充电, 1: 充电中]
+	// bcl: 电池电量级别 [0-100]
 	param, err := parseResponse(m.commands.BatteryLevel, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -73,6 +76,9 @@ func (m *Device) GetDeviceTemp() (int, int, error) {
 		return 0, 0, err
 	}
 
+	// 响应格式: "+CPMUTEMP: <temp>,<status>"
+	// temp: 温度值
+	// status: 状态 [0: 正常, 1: 过热]
 	param, err := parseResponse(m.commands.DeviceTemp, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -87,6 +93,8 @@ func (m *Device) GetNetworkTime() (string, error) {
 		return "", err
 	}
 
+	// 响应格式: "+CCLK: <time>"
+	// time: 时间字符串，格式为 "YY/MM/DD,HH:MM:SS+TZ"
 	param, err := parseResponse(m.commands.NetworkTime, responses, 1)
 	if err != nil {
 		return "", err
@@ -105,6 +113,8 @@ func (m *Device) SetTime(timeStr string) error {
 
 // GetSIMStatus 查询 SIM 卡状态
 func (m *Device) GetSIMStatus() (string, error) {
+	// 响应格式: "+CPIN: <code>"
+	// code: 状态代码 ["READY", "SIM PIN", "SIM PUK", "PH-SIM PIN"]
 	return m.SimpleQuery(m.commands.SIMStatus)
 }
 
@@ -136,31 +146,43 @@ func (m *Device) UnlockPIN(pinType string, enable bool, password string) error {
 
 // GetIMEI 查询 IMEI
 func (m *Device) GetIMEI() (string, error) {
+	// 响应格式: "<imei>"
+	// imei: 15位设备唯一标识码
 	return m.SimpleQuery(m.commands.IMEI)
 }
 
 // GetManufacturer 查询制造商信息
 func (m *Device) GetManufacturer() (string, error) {
+	// 响应格式: "<manufacturer>"
+	// manufacturer: 制造商名称
 	return m.SimpleQuery(m.commands.Manufacturer)
 }
 
 // GetModel 查询型号信息
 func (m *Device) GetModel() (string, error) {
+	// 响应格式: "<model>"
+	// model: 设备型号
 	return m.SimpleQuery(m.commands.Model)
 }
 
 // GetRevision 查询版本信息
 func (m *Device) GetRevision() (string, error) {
+	// 响应格式: "<revision>"
+	// revision: 固件版本号
 	return m.SimpleQuery(m.commands.Revision)
 }
 
 // GetIMSI 查询IMSI信息
 func (m *Device) GetIMSI() (string, error) {
+	// 响应格式: "<imsi>"
+	// imsi: 15位国际移动用户识别码
 	return m.SimpleQuery(m.commands.IMSI)
 }
 
 // GetICCID 查询ICCID信息
 func (m *Device) GetICCID() (string, error) {
+	// 响应格式: "<iccid>"
+	// iccid: 20位集成电路卡识别码
 	return m.SimpleQuery(m.commands.ICCID)
 }
 
@@ -171,6 +193,10 @@ func (m *Device) GetNumber() (string, int, error) {
 		return "", 0, err
 	}
 
+	// 响应格式: "+CNUM: <alpha>,<number>,<type>"
+	// alpha: 名称
+	// number: 电话号码
+	// type: 号码类型 [129: 国际, 161: 国内]
 	param, err := parseResponse(m.commands.Number, responses, 2)
 	if err != nil {
 		return "", 0, err
