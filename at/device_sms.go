@@ -80,10 +80,12 @@ func (m *Device) GetSmsCenter() (string, int, error) {
 	// 响应格式: "+CSCA: <number>,<tosca>"
 	// number: 短信中心号码
 	// tosca: 号码类型
-	param, err := parseResponse(m.commands.SmsCenter+"?", responses, 7)
+	param, err := parseResponse(m.commands.SmsCenter+"?", responses, 2)
 	if err != nil {
 		return "", 0, err
 	}
+
+	m.printf("param: %v", param)
 
 	return param[0], parseInt(param[1]), nil
 }

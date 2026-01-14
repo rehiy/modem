@@ -453,7 +453,7 @@ readStore, writeStore, receiveStore, _ := device.GetSmsStorage()
 device.SetSmsStorage("ME", "ME", "ME")
 
 // 查询短信中心号码
-center, _ := device.GetSmsCenter()
+center, _, _ := device.GetSmsCenter()
 
 // 设置短信中心号码
 device.SetSmsCenter("+8613800100500")
