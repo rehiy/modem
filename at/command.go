@@ -48,6 +48,7 @@ type CommandSet struct {
 
 	// 短信相关
 	SmsFormat string // 设置短信格式 AT+CMGF
+	SmsStore  string // 设置短信存储位置 AT+CPMS
 	ListSms   string // 列出短信 AT+CMGL
 	ReadSms   string // 读取短信 AT+CMGR
 	DeleteSms string // 删除短信 AT+CMGD
@@ -117,6 +118,7 @@ func DefaultCommandSet() *CommandSet {
 
 		// 短信相关
 		SmsFormat: "AT+CMGF",
+		SmsStore:  "AT+CPMS",
 		ListSms:   "AT+CMGL",
 		ReadSms:   "AT+CMGR",
 		DeleteSms: "AT+CMGD",

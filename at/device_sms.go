@@ -26,6 +26,13 @@ func (m *Device) SetSmsMode(v int) error {
 	return m.SendCommandExpect(cmd, "OK")
 }
 
+// SetSmsStorage 设置短信存储
+// v "ME","ME","ME" [ME: 手机内存, SM: 短信存储]
+func (m *Device) SetSmsStorage(v string) error {
+	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SmsStore, v)
+	return m.SendCommandExpect(cmd, "OK")
+}
+
 // SendSmsPdu 发送短信
 func (m *Device) SendSmsPdu(number, message string) error {
 	tpdus, err := sms.Encode([]byte(message), sms.To(number))
