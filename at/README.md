@@ -363,7 +363,7 @@ device.SetSignalReport(1, 10)
 | `Hangup()` | `ATH` | - | 挂断电话 |
 | `GetCallerID()` | `AT+CLIP?` | `(bool)` | 来电显示状态 |
 | `SetCallerID(enable)` | `AT+CLIP` | enable | - | 设置来电显示 |
-| `GetCallState()` | `AT+CLCC` | `([]CallInfo)` | 通话状态列表 |
+| `GetCallState()` | `AT+CLCC` | `([]map[string]any)` | 通话状态列表 |
 | `GetCallWait()` | `AT+CCWA?` | `(bool)` | 呼叫等待状态 |
 | `SetCallWait(enable)` | `AT+CCWA` | enable | - | 设置呼叫等待 |
 | `GetCallFWD(reason)` | `AT+CCFC?` | `(bool, string)` | 状态, 转移号码 |
@@ -385,22 +385,7 @@ device.SetCallerID(true)
 // 查询通话状态
 calls, _ := device.GetCallState()
 for _, call := range calls {
-    log.Printf("ID: %d, 号码: %s, 状态: %d, 方向: %d",
-        call.ID, call.Number, call.Status, call.Dir)
-}
-```
-
-### CallInfo 结构
-
-```go
-type CallInfo struct {
-    ID     int    // 通话标识
-    Dir    int    // 方向 [0: 呼出, 1: 呼入]
-    Status int    // 状态 [0: 活动中, 1: 保持中, 2: 拨号中, 3: 响铃中, 4: 来电中]
-    Mode   int    // 模式 [0: 语音, 1: 数据, 2: 传真]
-    Number string // 号码
-    Type   int    // 号码类型 [129: 国际, 161: 国内]
-    Multip int    // 多方通话
+    log.Printf("%v", call)
 }
 ```
 
@@ -432,8 +417,8 @@ log.Printf("呼叫转移: %v, 转移到: %s", enabled, number)
 |------|---------|------|--------|------|
 | `GetSmsMode()` | `AT+CMGF?` | - | `(int)` | 获取短信模式 |
 | `SetSmsMode(v)` | `AT+CMGF` | v | - | 设置短信模式 |
-| `GetSmsStorage()` | `AT+CPMS?` | - | `(string, string, string)` | 获取存储配置 |
-| `SetSmsStorage(v1, v2, v3)` | `AT+CPMS` | v1, v2, v3 | - | 设置存储位置 |
+| `GetSmsStore()` | `AT+CPMS?` | - | `(string, string, string)` | 获取存储配置 |
+| `SetSmsStore(v1, v2, v3)` | `AT+CPMS` | v1, v2, v3 | - | 设置存储位置 |
 | `GetSmsCenter()` | `AT+CSCA?` | - | `(string)` | 获取短信中心号码 |
 | `SetSmsCenter(number)` | `AT+CSCA` | number | - | 设置短信中心号码 |
 
@@ -446,11 +431,11 @@ mode, _ := device.GetSmsMode()
 device.SetSmsMode(0)
 
 // 查询存储配置
-readStore, writeStore, receiveStore, _ := device.GetSmsStorage()
+readStore, writeStore, receiveStore, _ := device.GetSmsStore()
 // ME=手机内存, SM=SIM卡存储
 
 // 设置存储位置（读、写、接收都使用手机内存）
-device.SetSmsStorage("ME", "ME", "ME")
+device.SetSmsStore("ME", "ME", "ME")
 
 // 查询短信中心号码
 center, _, _ := device.GetSmsCenter()

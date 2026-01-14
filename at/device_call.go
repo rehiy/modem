@@ -46,25 +46,14 @@ func (m *Device) SetCallerID(enable bool) error {
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// CallInfo 通话信息
-type CallInfo struct {
-	ID     int    // 通话标识
-	Dir    int    // 方向 [0: MO呼出, 1: MT呼入]
-	Status int    // 状态 [0: 活动中, 1: 保持中, 2: 拨号中, 3: 响铃中, 4: 来电中]
-	Mode   int    // 模式 [0: 语音, 1: 数据, 2: 传真]
-	Number string // 号码
-	Type   int    // 号码类型 [129: 国际, 161: 国内]
-	Multip int    // 多方通话
-}
-
 // GetCallState 查询通话状态
-func (m *Device) GetCallState() ([]CallInfo, error) {
+func (m *Device) GetCallState() ([]map[string]any, error) {
 	responses, err := m.SendCommand(m.commands.CallState)
 	if err != nil {
 		return nil, err
 	}
 
-	var calls []CallInfo
+	var calls []map[string]any
 	label := getCommandResponseLabel(m.commands.CallState)
 	for _, line := range responses {
 		respLabel, param := parseParam(line)
@@ -77,14 +66,14 @@ func (m *Device) GetCallState() ([]CallInfo, error) {
 			// multip: 多方通话
 			// number: 号码
 			// type: 号码类型 [129: 国际, 161: 国内]
-			calls = append(calls, CallInfo{
-				ID:     parseInt(param[0]),
-				Dir:    parseInt(param[1]),
-				Status: parseInt(param[2]),
-				Mode:   parseInt(param[3]),
-				Number: param[5],
-				Type:   parseInt(param[6]),
-				Multip: parseInt(param[4]),
+			calls = append(calls, map[string]any{
+				"id":     parseInt(param[0]),
+				"dir":    parseInt(param[1]),
+				"status": parseInt(param[2]),
+				"mode":   parseInt(param[3]),
+				"number": param[5],
+				"type":   parseInt(param[6]),
+				"multip": parseInt(param[4]),
 			})
 		}
 	}

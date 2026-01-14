@@ -43,31 +43,40 @@ func (m *Device) GetSmsMode() (int, error) {
 	return parseInt(param[0]), nil
 }
 
-// SetSmsStorage 设置短信存储
+// SetSmsStore 设置短信存储
 // v [ME: 手机内存, SM: 短信存储]
-func (m *Device) SetSmsStorage(v1, v2, v3 string) error {
+func (m *Device) SetSmsStore(v1, v2, v3 string) error {
 	cmd := fmt.Sprintf("%s=\"%s\",\"%s\",\"%s\"", m.commands.SmsStore, v1, v2, v3)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// GetSmsStorage 获取短信存储配置
+// GetSmsStore 获取短信存储配置
 // 返回 (读存储, 写存储, 接收存储)
-func (m *Device) GetSmsStorage() (string, string, string, error) {
+func (m *Device) GetSmsStore() (map[string]any, error) {
 	responses, err := m.SendCommand(m.commands.SmsStore + "?")
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 
 	// 响应格式: "+CPMS: <mem1>,<used1>,<total1>,<mem2>,<used2>,<total2>,<mem3>,<used3>,<total3>"
-	// mem1: 读取短信的存储位置
-	// mem2: 写入短信的存储位置
-	// mem3: 接收短信的存储位置
-	param, err := parseResponse(m.commands.SmsStore+"?", responses, 7)
+	// mem1/2/3: 读取/写入/接收短信的存储位置
+	param, err := parseResponse(m.commands.SmsStore+"?", responses, 9)
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 
-	return param[0], param[3], param[6], nil
+	result := map[string]any{
+		"mem1":   param[0],
+		"used1":  parseInt(param[1]),
+		"total1": parseInt(param[2]),
+		"mem2":   param[3],
+		"used2":  parseInt(param[4]),
+		"total2": parseInt(param[5]),
+		"mem3":   param[6],
+		"used3":  parseInt(param[7]),
+		"total3": parseInt(param[8]),
+	}
+	return result, nil
 }
 
 // GetSmsCenter 获取短信中心号码
