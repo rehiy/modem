@@ -71,11 +71,21 @@ func (m *Device) GetSmsStorage() (string, string, string, error) {
 }
 
 // GetSmsCenter 获取短信中心号码
-func (m *Device) GetSmsCenter() (string, error) {
+func (m *Device) GetSmsCenter() (string, int, error) {
+	responses, err := m.SendCommand(m.commands.SmsCenter + "?")
+	if err != nil {
+		return "", 0, err
+	}
+
 	// 响应格式: "+CSCA: <number>,<tosca>"
 	// number: 短信中心号码
 	// tosca: 号码类型
-	return m.SimpleQuery(m.commands.SmsCenter + "?")
+	param, err := parseResponse(m.commands.SmsCenter+"?", responses, 7)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return param[0], parseInt(param[1]), nil
 }
 
 // SetSmsCenter 设置短信中心号码
