@@ -22,11 +22,11 @@ type NotificationSet struct {
 	UnsolicitedNotify string // +CSSU - 补充服务通知（成功）- 呼叫抑制解除
 
 	// 短信相关
-	SMSReady        string // +CMTI - 新短信到达通知
-	SMSContent      string // +CMT - 短信内容推送
-	SMSStatusReport string // +CDS - 短信状态报告
+	SmsReady        string // +CMTI - 新短信到达通知
+	SmsContent      string // +CMT - 短信内容推送
+	SmsStatusReport string // +CDS - 短信状态报告
 	CellBroadcast   string // +CBM - 小区广播消息
-	SMSAck          string // +CNMA - 新消息确认
+	SmsAck          string // +CNMA - 新消息确认
 
 	// 网络注册
 	NetworkReg string // +CREG - GSM 网络注册状态
@@ -56,8 +56,8 @@ type NotificationSet struct {
 	CallEnded   string // +CDIS - 呼叫结束通知
 	CallHeld    string // +CHLD - 呼叫保持/多方通话状态
 	CallForward string // +CCFC - 呼叫转接状态
-	SMSSent     string // +CMGS - 短信发送成功
-	SMSWrite    string // +CMGW - 短信写入存储
+	SmsSent     string // +CMGS - 短信发送成功
+	SmsWrite    string // +CMGW - 短信写入存储
 	DeviceReady string // +RDY - 设备就绪
 	DeviceBoot  string // +BOOT - 设备启动完成
 
@@ -94,11 +94,11 @@ func DefaultNotificationSet() *NotificationSet {
 		NoDialtone:        "NO DIALTONE",
 
 		// 短信相关
-		SMSReady:        "+CMTI",
-		SMSContent:      "+CMT",
-		SMSStatusReport: "+CDS",
+		SmsReady:        "+CMTI",
+		SmsContent:      "+CMT",
+		SmsStatusReport: "+CDS",
 		CellBroadcast:   "+CBM",
-		SMSAck:          "+CNMA",
+		SmsAck:          "+CNMA",
 
 		// 网络注册
 		NetworkReg: "+CREG",
@@ -128,8 +128,8 @@ func DefaultNotificationSet() *NotificationSet {
 		CallEnded:   "+CDIS",
 		CallHeld:    "+CHLD",
 		CallForward: "+CCFC",
-		SMSSent:     "+CMGS",
-		SMSWrite:    "+CMGW",
+		SmsSent:     "+CMGS",
+		SmsWrite:    "+CMGW",
 		DeviceReady: "+RDY",
 		DeviceBoot:  "+BOOT",
 

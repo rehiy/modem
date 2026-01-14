@@ -64,7 +64,7 @@ func (e DecodeError) Error() string {
 type ErrUnsupportedSmsType byte
 
 func (e ErrUnsupportedSmsType) Error() string {
-	return fmt.Sprintf("unsupported SMS type: 0x%x", uint(e))
+	return fmt.Sprintf("unsupported sms type: 0x%x", uint(e))
 }
 
 var (
@@ -73,7 +73,7 @@ var (
 
 	// ErrOddUCS2Length indicates the length of a binary array containing UCS2
 	// characters has an uneven length, and so has split a UCS2 character.
-	ErrOddUCS2Length = errors.New("odd UCS2 length")
+	ErrOddUCS2Length = errors.New("odd usc2 length")
 
 	// ErrOverlength indicates the binary provided contains more bytes than
 	// expected by the TPDU decoder.

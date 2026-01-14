@@ -380,27 +380,27 @@ log.Printf("呼叫转移: %v, 转移到: %s", enabled, number)
 
 | 方法 | 说明 |
 |------|------|
-| `SetSMSMode(v)` | 设置短信模式 (0: PDU 模式, 1: TEXT 模式) |
-| `SendSMSPdu(number, message)` | 发送短信（PDU 模式） |
+| `SetSmsMode(v)` | 设置短信模式 (0: PDU 模式, 1: TEXT 模式) |
+| `SendSmsPdu(number, message)` | 发送短信（PDU 模式） |
 
 ```go
 // 设置为 PDU 模式
-device.SetSMSMode(0)
+device.SetSmsMode(0)
 
 // 发送短信
-device.SendSMSPdu("+8613800138000", "Hello from Go!")
-device.SendSMSPdu("+8613800138000", "你好，这是一条中文短信！")
+device.SendSmsPdu("+8613800138000", "Hello from Go!")
+device.SendSmsPdu("+8613800138000", "你好，这是一条中文短信！")
 ```
 
 ### 短信列表
 
 | 方法 | AT 命令 | 参数 | 说明 |
 |------|---------|------|------|
-| `ListSMSPdu(stat)` | `AT+CMGL=<stat>` | stat | 获取短信列表 |
+| `ListSmsPdu(stat)` | `AT+CMGL=<stat>` | stat | 获取短信列表 |
 
 ```go
 // 列出所有短信
-list, _ := device.ListSMSPdu(4)
+list, _ := device.ListSmsPdu(4)
 for _, sms := range list {
     log.Printf("来自: %s, 内容: %s, 时间: %s",
         sms.Number, sms.Text, sms.Time)
@@ -411,17 +411,17 @@ for _, sms := range list {
 
 | 方法 | AT 命令 | 参数 | 说明 |
 |------|---------|------|------|
-| `DeleteSMS(indices)` | `AT+CMGD=<index>` | indices | 批量删除指定索引的短信 |
+| `DeleteSms(indices)` | `AT+CMGD=<index>` | indices | 批量删除指定索引的短信 |
 
 ```go
 // 删除指定索引的短信
-device.DeleteSMS([]int{1, 2, 3})
+device.DeleteSms([]int{1, 2, 3})
 ```
 
 ### SMS 结构
 
 ```go
-type SMS struct {
+type Sms struct {
     Number  string `json:"number"`  // 电话号码
     Text    string `json:"text"`    // 短信内容
     Time    string `json:"time"`    // 时间戳

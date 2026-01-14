@@ -10,7 +10,7 @@ import (
 )
 
 // SMS 短信信息
-type SMS struct {
+type Sms struct {
 	Number  string `json:"number"`
 	Text    string `json:"text"`
 	Time    string `json:"time"`
@@ -19,15 +19,15 @@ type SMS struct {
 	Status  string `json:"status"`  // 短信状态 [PDU: TEXT, 0: "REC UNREAD", 1: "REC READ", 2: "STO UNSENT", 3: "STO SENT", 4: "ALL"]
 }
 
-// SetSMSMode 设置短信模式
+// SetSmsMode 设置短信模式
 // v [0: PDU 模式, 1: TEXT 模式]
-func (m *Device) SetSMSMode(v int) error {
-	cmd := fmt.Sprintf("%s=%d", m.commands.SMSFormat, v)
+func (m *Device) SetSmsMode(v int) error {
+	cmd := fmt.Sprintf("%s=%d", m.commands.SmsFormat, v)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// SendSMSPdu 发送短信
-func (m *Device) SendSMSPdu(number, message string) error {
+// SendSmsPdu 发送短信
+func (m *Device) SendSmsPdu(number, message string) error {
 	tpdus, err := sms.Encode([]byte(message), sms.To(number))
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (m *Device) SendSMSPdu(number, message string) error {
 		}
 
 		// 发送 AT 命令（TPDU 长度不包含 SMSC 部分）
-		cmd := fmt.Sprintf("%s=%d", m.commands.SendSMS, len(tpduBytes))
+		cmd := fmt.Sprintf("%s=%d", m.commands.SendSms, len(tpduBytes))
 		if err := m.SendCommandExpect(cmd, ">"); err != nil {
 			m.printf("send sms command error: %v", err)
 			return err
@@ -72,19 +72,19 @@ func (m *Device) SendSMSPdu(number, message string) error {
 }
 
 // ListSMSPdu 获取短信列表
-func (m *Device) ListSMSPdu(stat int) ([]SMS, error) {
-	cmd := fmt.Sprintf("%s=%d", m.commands.ListSMS, stat)
+func (m *Device) ListSmsPdu(stat int) ([]Sms, error) {
+	cmd := fmt.Sprintf("%s=%d", m.commands.ListSms, stat)
 	responses, err := m.SendCommand(cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	result := []SMS{}
+	result := []Sms{}
 	indices := make(map[int][]int)
 	collector := sms.NewCollector()
 	defer collector.Close() // 确保资源释放
 
-	expectedLabel := getCommandResponseLabel(m.commands.ListSMS)
+	expectedLabel := getCommandResponseLabel(m.commands.ListSms)
 	for i, l := 0, len(responses); i < l; {
 		label, param := parseParam(responses[i])
 		i++
@@ -139,7 +139,7 @@ func (m *Device) ListSMSPdu(stat int) ([]SMS, error) {
 				continue
 			}
 
-			result = append(result, SMS{
+			result = append(result, Sms{
 				Number:  segments[0].OA.Number(),
 				Text:    string(msgBytes),
 				Time:    segments[0].SCTS.Time.Format("2006/01/02 15:04:05"),
@@ -157,10 +157,10 @@ func (m *Device) ListSMSPdu(stat int) ([]SMS, error) {
 	return result, nil
 }
 
-// DeleteSMS 批量删除指定索引的短信
-func (m *Device) DeleteSMS(indices []int) error {
+// DeleteSms 批量删除指定索引的短信
+func (m *Device) DeleteSms(indices []int) error {
 	for _, index := range indices {
-		cmd := fmt.Sprintf("%s=%d", m.commands.DeleteSMS, index)
+		cmd := fmt.Sprintf("%s=%d", m.commands.DeleteSms, index)
 		if _, err := m.SendCommand(cmd); err != nil {
 			return err
 		}

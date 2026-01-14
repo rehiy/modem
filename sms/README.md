@@ -56,21 +56,21 @@ go get github.com/rehiy/modem
 package main
 
 import (
-	"fmt"
-	"github.com/rehiy/modem/sms"
+    "fmt"
+    "github.com/rehiy/modem/sms"
 )
 
 func main() {
-	// 1. 编码消息
-	tpdus, _ := sms.Encode([]byte("hello world"))
-	for _, p := range tpdus {
-		b, _ := p.MarshalBinary()
-		fmt.Printf("PDU: %X\n", b)
-	}
+    // 1. 编码消息
+    tpdus, _ := sms.Encode([]byte("hello world"))
+    for _, p := range tpdus {
+        b, _ := p.MarshalBinary()
+        fmt.Printf("PDU: %X\n", b)
+    }
 
-	// 2. 解码消息
-	msg, _ := sms.Decode(tpdus)
-	fmt.Printf("解码消息: %s\n", msg)
+    // 2. 解码消息
+    msg, _ := sms.Decode(tpdus)
+    fmt.Printf("解码消息: %s\n", msg)
 }
 ```
 
@@ -88,6 +88,7 @@ SMS TPDU 分为两种主要类型：
 ### 长消息分段
 
 当消息超过单条短信限制时：
+
 - GSM 7-bit 编码：153 字符/段
 - UCS2 编码：67 字符/段
 - 自动使用 UDH（User Data Header）管理分段信息
@@ -182,33 +183,33 @@ for {
 package main
 
 import (
-	"fmt"
-	"github.com/rehiy/modem/sms"
+    "fmt"
+    "github.com/rehiy/modem/sms"
 )
 
 func main() {
-	// 示例 1: 编码并发送
-	message := "Hello, 这是一条长消息，需要分段发送"
-	tpdus, _ := sms.Encode([]byte(message), sms.To("+8613800138000"))
-	
-	for i, p := range tpdus {
-		b, _ := p.MarshalBinary()
-		fmt.Printf("分段 %d: %X\n", i+1, b)
-	}
+    // 示例 1: 编码并发送
+    message := "Hello, 这是一条长消息，需要分段发送"
+    tpdus, _ := sms.Encode([]byte(message), sms.To("+8613800138000"))
+    
+    for i, p := range tpdus {
+        b, _ := p.MarshalBinary()
+        fmt.Printf("分段 %d: %X\n", i+1, b)
+    }
 
-	// 示例 2: 接收并解码
-	// 假设从调制解调器接收到多个 TPDU
-	collector := sms.NewCollector()
-	
-	for _, bintpdu := range receivedTpdus {
-		pdu, _ := sms.Unmarshal(bintpdu)
-		coll, _ := collector.Collect(pdu)
-		
-		if len(coll) > 0 {
-			msg, _ := sms.Decode(coll)
-			fmt.Printf("完整消息: %s\n", msg)
-		}
-	}
+    // 示例 2: 接收并解码
+    // 假设从调制解调器接收到多个 TPDU
+    collector := sms.NewCollector()
+    
+    for _, bintpdu := range receivedTpdus {
+        pdu, _ := sms.Unmarshal(bintpdu)
+        coll, _ := collector.Collect(pdu)
+        
+        if len(coll) > 0 {
+            msg, _ := sms.Decode(coll)
+            fmt.Printf("完整消息: %s\n", msg)
+        }
+    }
 }
 ```
 
@@ -320,10 +321,9 @@ fmt.Printf("消息分为 %d 段\n", len(tpdus))
 ```go
 // 设置分段收集超时
 c := sms.NewCollector(
-	sms.WithReassemblyTimeout(5*time.Minute, func(reference, total, received uint8) {
-		fmt.Printf("分段收集超时: ref=%d, total=%d, received=%d\n", 
-			reference, total, received)
-	}),
+    sms.WithReassemblyTimeout(5*time.Minute, func(reference, total, received uint8) {
+        fmt.Printf("分段收集超时: ref=%d, total=%d, received=%d\n", reference, total, received)
+    }),
 )
 ```
 
@@ -332,18 +332,18 @@ c := sms.NewCollector(
 ```go
 tpdus, err := sms.Encode([]byte("hello"))
 if err != nil {
-	// 处理编码错误
-	log.Printf("编码失败: %v", err)
-	return
+    // 处理编码错误
+    log.Printf("编码失败: %v", err)
+    return
 }
 
 for _, p := range tpdus {
-	b, err := p.MarshalBinary()
-	if err != nil {
-		log.Printf("序列化失败: %v", err)
-		continue
-	}
-	// 发送 PDU...
+    b, err := p.MarshalBinary()
+    if err != nil {
+        log.Printf("序列化失败: %v", err)
+        continue
+    }
+    // 发送 PDU...
 }
 ```
 

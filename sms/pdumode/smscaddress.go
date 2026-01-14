@@ -7,7 +7,7 @@ import (
 
 // SMSCAddress is the address of the SMSC.
 //
-// The SMCSAddress is similar to a TPDU Address, but the binary form is
+// The SMSCAddress is similar to a TPDU Address, but the binary form is
 // marshalled differently, hence the subtype.
 //
 // The Type-of-number should typically be TonNational or TonInternational, but
@@ -15,12 +15,12 @@ import (
 //
 // The NumberingPlan should typically be NpISDN, but that is not enforced
 // either.
-type SMSCAddress struct {
+type SmscAddress struct {
 	tpdu.Address
 }
 
 // MarshalBinary marshals the SMSC Address into binary.
-func (a *SMSCAddress) MarshalBinary() (dst []byte, err error) {
+func (a *SmscAddress) MarshalBinary() (dst []byte, err error) {
 	addr, err := semioctet.Encode([]byte(a.Addr))
 	if err != nil {
 		return nil, tpdu.EncodeError("addr", err)
@@ -40,7 +40,7 @@ func (a *SMSCAddress) MarshalBinary() (dst []byte, err error) {
 //
 // It returns the number of bytes read from the source, and any error detected
 // while decoding.
-func (a *SMSCAddress) UnmarshalBinary(src []byte) (int, error) {
+func (a *SmscAddress) UnmarshalBinary(src []byte) (int, error) {
 	if len(src) < 1 {
 		return 0, tpdu.NewDecodeError("length", 0, tpdu.ErrUnderflow)
 	}

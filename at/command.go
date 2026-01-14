@@ -47,11 +47,11 @@ type CommandSet struct {
 	SetAPN     string // 设置 APN AT+CGDCONT
 
 	// 短信相关
-	SMSFormat string // 设置短信格式 AT+CMGF
-	ListSMS   string // 列出短信 AT+CMGL
-	ReadSMS   string // 读取短信 AT+CMGR
-	DeleteSMS string // 删除短信 AT+CMGD
-	SendSMS   string // 发送短信 AT+CMGS
+	SmsFormat string // 设置短信格式 AT+CMGF
+	ListSms   string // 列出短信 AT+CMGL
+	ReadSms   string // 读取短信 AT+CMGR
+	DeleteSms string // 删除短信 AT+CMGD
+	SendSms   string // 发送短信 AT+CMGS
 
 	// 语音通话
 	Dial      string // 拨号 ATD
@@ -116,11 +116,11 @@ func DefaultCommandSet() *CommandSet {
 		SetAPN:     "AT+CGDCONT",
 
 		// 短信相关
-		SMSFormat: "AT+CMGF",
-		ListSMS:   "AT+CMGL",
-		ReadSMS:   "AT+CMGR",
-		DeleteSMS: "AT+CMGD",
-		SendSMS:   "AT+CMGS",
+		SmsFormat: "AT+CMGF",
+		ListSms:   "AT+CMGL",
+		ReadSms:   "AT+CMGR",
+		DeleteSms: "AT+CMGD",
+		SendSms:   "AT+CMGS",
 
 		// 语音通话
 		Dial:      "ATD",
