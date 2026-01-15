@@ -9,8 +9,8 @@ type CommandSet struct {
 	Reset        string // 重置 modem ATZ
 	FactoryReset string // 恢复出厂设置 AT&F
 	SaveSettings string // 保存设置 AT&W
-	LoadProfile  string // 加载配置文件 ATZ[profile]
-	SaveProfile  string // 保存到配置文件 AT&W[profile]
+	LoadProfile  string // 加载配置文件 AT&Z<profile>
+	SaveProfile  string // 保存到配置文件 AT&W<profile>
 
 	// 设备身份信息
 	IMEI         string // 查询 IMEI AT+CGSN
@@ -80,7 +80,7 @@ func DefaultCommandSet() *CommandSet {
 		Reset:        "ATZ",
 		FactoryReset: "AT&F",
 		SaveSettings: "AT&W",
-		LoadProfile:  "ATZ",
+		LoadProfile:  "AT&Z",
 		SaveProfile:  "AT&W",
 
 		// 设备身份信息

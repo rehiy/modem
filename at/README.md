@@ -188,7 +188,7 @@ type Config struct {
 | `Reset()` | `ATZ` | 重启模块 |
 | `FactoryReset()` | `AT&F` | 恢复出厂设置 |
 | `SaveSettings()` | `AT&W` | 保存设置 |
-| `LoadProfile(profile)` | `ATZ<profile>` | 加载配置文件 |
+| `LoadProfile(profile)` | `AT&Z<profile>` | 加载配置文件 |
 | `SaveProfile(profile)` | `AT&W<profile>` | 保存配置文件 |
 
 ```go
