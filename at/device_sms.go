@@ -3,6 +3,7 @@ package at
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/rehiy/modem/sms"
@@ -114,11 +115,6 @@ func (m *Device) SendSmsPdu(number, message string) error {
 		return err
 	}
 
-	// 临时延长超时
-	rdTimeout := m.timeout
-	m.timeout = time.Second * 60
-	defer func() { m.timeout = rdTimeout }()
-
 	for _, p := range tpdus {
 		// 将 TPDU 序列化为字节数组
 		tpduBytes, err := p.MarshalBinary()
@@ -136,11 +132,19 @@ func (m *Device) SendSmsPdu(number, message string) error {
 		}
 
 		// 发送 AT 命令（TPDU 长度不包含 SMSC 部分）
-		cmd := fmt.Sprintf("%s=%d", m.commands.SendSms, len(tpduBytes))
-		if err := m.SendCommandExpect(cmd, ">"); err != nil {
-			m.printf("send sms command error: %v", err)
-			return err
+		cmd := fmt.Sprintf("%s=%d\r", m.commands.SendSms, len(tpduBytes))
+		if resp, err := m.SendCommand(cmd); err != nil {
+			if !strings.Contains(err.Error(), "timeout") {
+				m.printf("send sms command error: %s, %v", resp, err)
+			}
 		}
+		// 让子弹飞一会儿
+		time.Sleep(time.Second * 2)
+
+		// 临时延长超时
+		rdTimeout := m.timeout
+		m.timeout = time.Second * 15
+		defer func() { m.timeout = rdTimeout }()
 
 		// 发送 PDU 数据
 		if _, err := m.SendCommand(pduHex + "\x1A"); err != nil {
