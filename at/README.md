@@ -209,7 +209,7 @@ device.LoadProfile(1)  // 加载配置文件1
 | `GetRevision()` | `AT+CGMR` | `(string)` | 版本号 |
 | `GetIMSI()` | `AT+CIMI` | `(string)` | IMSI 码 |
 | `GetICCID()` | `AT+CCID` | `(string)` | ICCID 码 |
-| `GetNumber()` | `AT+CNUM` | `(string, int)` | 手机号, 号码类型 |
+| `GetNumber()` | `AT+CNUM` | `(string, int)` | 本机号码, 号码类型 |
 
 ```go
 imei, _ := device.GetIMEI()
@@ -255,16 +255,17 @@ device.SetTime("26/01/13,12:30:45+08")
 | `GetSIMStatus()` | `AT+CPIN?` | 查询 SIM 状态 |
 | `VerifyPIN(pin)` | `AT+CPIN=<pin>` | 验证 PIN 码 |
 | `ChangePIN(old, new)` | `AT+CPWD=<old>,<new>` | 修改 PIN 码 |
-| `UnlockPIN(pinType, enable, pwd)` | `AT+CLCK` | 锁定/解锁 PIN |
+| `UnlockPIN(pinType, enable, pwd)` | `AT+CLCK` | 查询/设置 PIN 锁 |
 
 ```go
 status, _ := device.GetSIMStatus()
-// 返回值: "READY", "SIM PIN", "SIM PUK" 等
+// 返回值: "READY": 准备就绪, "SIM PIN": 需要 PIN 码, "SIM PUK": 需要 PUK 码, "PH-SIM PIN": 需要 PH-SIM PIN
 
 device.VerifyPIN("1234")
 device.ChangePIN("1234", "5678")
 
-// 启用 PIN 锁
+// 设置 PIN 锁
+// pinType: PIN 锁类型 ["SC": SIM 卡 PIN, "PS": SIM 卡 PUK, "PF": SIM 卡 FDN]
 device.UnlockPIN("SC", true, "5678")
 ```
 
@@ -283,21 +284,21 @@ device.UnlockPIN("SC", true, "5678")
 
 ```go
 mode, _, operator, act, _ := device.GetOperator()
-// mode: 0=自动, 1=手动, 2=取消注册
-// act: 0=GSM, 2=UTRAN, 3=GSM w/EGPRS, 4=UTRAN w/HSDPA, 7=E-UTRA
+// mode: 0=自动, 1=手动, 2=取消注册, 3=仅手动, 4=手动自动
+// act: 0=GSM, 2=UTRAN, 3=GSM w/EGPRS, 4=UTRAN w/HSDPA, 5=E-UTRA, 6=E-UTRA-NB, 7=E-UTRA
 log.Printf("运营商: %s, 接入技术: %d", operator, act)
 
 networkMode, _ := device.GetNetworkMode()
-// 常用模式: 2=AUTOMATIC, 13=GSM ONLY, 38=LTE ONLY, 51=SA/NSA
+// 返回值: 2=自动, 13=GSM ONLY, 38=LTE ONLY, 51=SA/NSA
 device.SetNetworkMode(38)
 
 n, stat, _ := device.GetNetworkStatus()
 // n: 0=禁用, 1=启用, 2=启用并显示位置信息
-// stat: 0=未注册, 1=已注册本地, 2=未注册但正在搜索, 3=注册被拒绝, 5=已注册漫游
+// stat: 0=未注册, 1=已注册本地, 2=未注册但在搜索, 3=注册被拒绝, 4=未知, 5=已注册漫游
 
 rssi, ber, _ := device.GetSignalQuality()
 // rssi: 0-31 (31=最佳, 99=未知), dBm = -113 + 2*rssi
-// ber: 0-7 (0=最佳, 99=未知)
+// ber: 0-7 (0=最佳, 7=最差, 99=未知)
 log.Printf("信号: RSSI=%d, BER=%d", rssi, ber)
 ```
 
@@ -313,8 +314,8 @@ log.Printf("信号: RSSI=%d, BER=%d", rssi, ber)
 
 ```go
 // 设置 APN
-// cid: 上下文标识符
-// pdpType: PDP 类型 ["IP", "IPV6", "IPV4V6"]
+// cid: 上下文标识符 [1-]
+// pdpType: PDP 类型 ["IP": IPv4, "IPV6": IPv6, "IPV4V6": 双栈]
 // apn: 接入点名称
 device.SetAPN(1, "IP", "cmnet")
 
@@ -415,11 +416,11 @@ log.Printf("呼叫转移: %v, 转移到: %s", enabled, number)
 
 | 方法 | AT 命令 | 参数 | 返回值 | 说明 |
 |------|---------|------|--------|------|
-| `GetSmsMode()` | `AT+CMGF?` | - | `(int)` | 获取短信模式 |
+| `GetSmsMode()` | `AT+CMGF?` | - | `(int)` | 查询短信模式 |
 | `SetSmsMode(v)` | `AT+CMGF` | v | - | 设置短信模式 |
-| `GetSmsStore()` | `AT+CPMS?` | - | `(string, string, string)` | 获取存储配置 |
+| `GetSmsStore()` | `AT+CPMS?` | - | `(map[string]any)` | 查询存储配置 |
 | `SetSmsStore(v1, v2, v3)` | `AT+CPMS` | v1, v2, v3 | - | 设置存储位置 |
-| `GetSmsCenter()` | `AT+CSCA?` | - | `(string)` | 获取短信中心号码 |
+| `GetSmsCenter()` | `AT+CSCA?` | - | `(string)` | 查询短信中心号码 |
 | `SetSmsCenter(number)` | `AT+CSCA` | number | - | 设置短信中心号码 |
 
 ```go
@@ -431,14 +432,18 @@ mode, _ := device.GetSmsMode()
 device.SetSmsMode(0)
 
 // 查询存储配置
-readStore, writeStore, receiveStore, _ := device.GetSmsStore()
-// ME=手机内存, SM=SIM卡存储
+// 返回 map 包含: mem1/used1/total1 (读), mem2/used2/total2 (写), mem3/used3/total3 (接收)
+// mem1/2/3: 存储位置 ["ME": 手机内存, "SM": SIM卡存储, "MT": 组合存储]
+config, _ := device.GetSmsStore()
+fmt.Printf("读取存储: %s, 已用: %d, 总数: %d\n",
+    config["mem1"], config["used1"], config["total1"])
 
 // 设置存储位置（读、写、接收都使用手机内存）
 device.SetSmsStore("ME", "ME", "ME")
 
 // 查询短信中心号码
-center, _, _ := device.GetSmsCenter()
+center, tosca, _ := device.GetSmsCenter()
+// tosca: 号码类型 [129: 国际, 145: 国内]
 
 // 设置短信中心号码
 device.SetSmsCenter("+8613800100500")
@@ -467,6 +472,7 @@ device.SendSmsPdu("+8613800138000", "你好，这是一条中文短信！")
 
 ```go
 // 列出所有短信
+// stat: 短信状态 [0: 未读, 1: 已读, 2: 未发送, 3: 已发送, 4: 所有]
 list, _ := device.ListSmsPdu(4)
 for _, sms := range list {
     log.Printf("来自: %s, 内容: %s, 时间: %s",
@@ -482,6 +488,7 @@ for _, sms := range list {
 
 ```go
 // 删除指定索引的短信
+// indices: 短信索引列表
 device.DeleteSms([]int{1, 2, 3})
 ```
 
@@ -499,6 +506,7 @@ type Sms struct {
 ```
 
 **字段说明：**
+
 - `Number`: 发送者电话号码
 - `Text`: 短信文本内容（自动合并长短信）
 - `Time`: 短信时间，格式为 "2006/01/02 15:04:05"
