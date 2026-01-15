@@ -1,4 +1,4 @@
-package operator
+package vars
 
 import "fmt"
 
@@ -758,9 +758,12 @@ var GlobalOperators = map[string]OperatorInfo{
 }
 
 // 根据PLMN代码获取运营商信息
-func GetOperatorInfo(plmn string) (OperatorInfo, bool) {
+func GetOperatorInfo(plmn string) OperatorInfo {
 	info, exists := GlobalOperators[plmn]
-	return info, exists
+	if exists {
+		return info
+	}
+	return OperatorInfo{}
 }
 
 // 根据MCC获取该国家所有运营商
