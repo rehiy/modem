@@ -12,10 +12,10 @@ func (m *Device) GetOperator() (int, int, string, int, error) {
 	}
 
 	// 响应格式: "+COPS: <mode>,<format>,<oper>,<AcT>"
-	// mode: 选择模式 [0: 自动, 1: 手动, 2: 取消注册]
+	// mode: 选择模式 [0: 自动, 1: 手动, 2: 取消注册, 3: 仅手动, 4: 手动自动]
 	// format: 格式 [0: 长字母数字, 1: 短字母数字, 2: 数字]
 	// oper: 运营商名称
-	// AcT: 接入技术 [0: GSM, 2: UTRAN, 3: GSM w/EGPRS, 4: UTRAN w/HSDPA, 7: E-UTRA]
+	// AcT: 接入技术 [0: GSM, 2: UTRAN, 3: GSM w/EGPRS, 4: UTRAN w/HSDPA, 5: E-UTRA, 6: E-UTRA-NB, 7: E-UTRA]
 	param, err := parseResponse(m.commands.Operator, responses, 3)
 	if err != nil {
 		return 0, 0, "", 0, err
@@ -24,6 +24,7 @@ func (m *Device) GetOperator() (int, int, string, int, error) {
 }
 
 // GetNetworkMode 查询网络模式
+// 返回值: [2: 自动, 13: GSM ONLY, 38: LTE ONLY, 51: SA/NSA]
 func (m *Device) GetNetworkMode() (int, error) {
 	responses, err := m.SendCommand(m.commands.NetworkMode + "?")
 	if err != nil {
@@ -40,13 +41,13 @@ func (m *Device) GetNetworkMode() (int, error) {
 }
 
 // SetNetworkMode 设置网络模式
-// 常用模式: 2=AUTOMATIC, 13=GSM ONLY, 38=LTE ONLY, 51=SA/NSA
+// mode: 网络模式 [2: 自动, 13: GSM ONLY, 38: LTE ONLY, 51: SA/NSA]
 func (m *Device) SetNetworkMode(mode int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.NetworkMode, mode)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// GetNetworkStatus 查询网络注册状态
+// GetNetworkStatus 查询网络注册状态及通知配置
 func (m *Device) GetNetworkStatus() (int, int, error) {
 	responses, err := m.SendCommand(m.commands.NetworkReg + "?")
 	if err != nil {
@@ -55,7 +56,7 @@ func (m *Device) GetNetworkStatus() (int, int, error) {
 
 	// 响应格式: "+CREG: <n>,<stat>"
 	// n: 网络注册通知方式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
-	// stat: 注册状态 [0: 未注册, 1: 已注册, 2: 未注册但在搜索, 3: 注册被拒绝, 5: 已注册漫游]
+	// stat: 注册状态 [0: 未注册, 1: 已注册本地, 2: 未注册但在搜索, 3: 注册被拒绝, 4: 未知, 5: 已注册漫游]
 	param, err := parseResponse(m.commands.NetworkReg, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -63,7 +64,7 @@ func (m *Device) GetNetworkStatus() (int, int, error) {
 	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
-// GetGPRSStatus 查询GPRS注册状态
+// GetGPRSStatus 查询 GPRS 注册状态及通知配置
 func (m *Device) GetGPRSStatus() (int, int, error) {
 	responses, err := m.SendCommand(m.commands.GPRSReg + "?")
 	if err != nil {
@@ -72,7 +73,7 @@ func (m *Device) GetGPRSStatus() (int, int, error) {
 
 	// 响应格式: "+CGREG: <n>,<stat>"
 	// n: GPRS 注册通知方式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
-	// stat: 注册状态 [0: 未注册, 1: 已注册, 2: 未注册但在搜索, 3: 注册被拒绝, 5: 已注册漫游]
+	// stat: 注册状态 [0: 未注册, 1: 已注册本地, 2: 未注册但在搜索, 3: 注册被拒绝, 4: 未知, 5: 已注册漫游]
 	param, err := parseResponse(m.commands.GPRSReg, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -89,7 +90,7 @@ func (m *Device) GetSignalQuality() (int, int, error) {
 
 	// 响应格式: "+CSQ: <rssi>,<ber>"
 	// rssi: 信号强度 [0-31, 99: 未知], 转换公式: dBm = -113 + 2*rssi
-	// ber: 误码率 [0-7, 99: 未知]
+	// ber: 误码率 [0-7, 99: 未知], 0=最佳, 7=最差
 	param, err := parseResponse(m.commands.Signal, responses, 2)
 	if err != nil {
 		return 0, 0, err
@@ -100,6 +101,7 @@ func (m *Device) GetSignalQuality() (int, int, error) {
 // ===== 网络配置 =====
 
 // GetAPN 查询 APN 配置
+// cid: 上下文标识符 [0: 返回第一个, 其他: 指定 CID]
 func (m *Device) GetAPN(cid int) (int, string, string, error) {
 	responses, err := m.SendCommand(m.commands.APN + "?")
 	if err != nil {
@@ -123,7 +125,7 @@ func (m *Device) GetAPN(cid int) (int, string, string, error) {
 
 // SetAPN 设置 APN 配置
 // cid: 上下文标识符 [1-]
-// pdpType: PDP 类型 ["IP", "IPV6", "IPV4V6"]
+// pdpType: PDP 类型 ["IP": IPv4, "IPV6": IPv6, "IPV4V6": 双栈]
 // apn: 接入点名称
 func (m *Device) SetAPN(cid int, pdpType, apn string) error {
 	cmd := fmt.Sprintf("%s=%d,\"%s\",\"%s\"", m.commands.SetAPN, cid, pdpType, apn)
@@ -131,7 +133,7 @@ func (m *Device) SetAPN(cid int, pdpType, apn string) error {
 }
 
 // GetPDPContext 查询 PDP 上下文状态
-// cid: 上下文标识符
+// cid: 上下文标识符 [0: 返回第一个, 其他: 指定 CID]
 func (m *Device) GetPDPContext(cid int) (int, int, error) {
 	responses, err := m.SendCommand(m.commands.PDPContext + "?")
 	if err != nil {
@@ -161,6 +163,7 @@ func (m *Device) SetPDPContext(cid int, state int) error {
 }
 
 // GetIPAddress 查询 IP 地址
+// cid: 上下文标识符 [0: 返回第一个, 其他: 指定 CID]
 func (m *Device) GetIPAddress(cid int) (int, string, error) {
 	responses, err := m.SendCommand(m.commands.IPAddress + "?")
 	if err != nil {
@@ -183,7 +186,7 @@ func (m *Device) GetIPAddress(cid int) (int, string, error) {
 
 // ===== 通知管理 =====
 
-// GetNetworkRegNotify 查询网络注册通知状态
+// GetNetworkRegNotify 查询网络注册通知设置
 func (m *Device) GetNetworkRegNotify() (int, error) {
 	responses, err := m.SendCommand(m.commands.NetworkRegNotify + "?")
 	if err != nil {
@@ -200,13 +203,13 @@ func (m *Device) GetNetworkRegNotify() (int, error) {
 }
 
 // SetNetworkRegNotify 设置网络注册通知
-// mode [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
+// mode: 通知模式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
 func (m *Device) SetNetworkRegNotify(mode int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.NetworkRegNotify, mode)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// GetGPRSRegNotify 查询 GPRS 注册通知状态
+// GetGPRSRegNotify 查询 GPRS 注册通知设置
 func (m *Device) GetGPRSRegNotify() (int, error) {
 	responses, err := m.SendCommand(m.commands.GPRSRegNotify + "?")
 	if err != nil {
@@ -223,14 +226,14 @@ func (m *Device) GetGPRSRegNotify() (int, error) {
 }
 
 // SetGPRSRegNotify 设置 GPRS 注册通知
-// mode [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
+// mode: 通知模式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
 func (m *Device) SetGPRSRegNotify(mode int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.GPRSRegNotify, mode)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
 // SetSignalReport 设置信号质量上报
-// mode [0: 关闭, 1: 开启]
+// mode: 上报模式 [0: 关闭, 1: 开启]
 // interval: 上报间隔(秒) [1-255]
 func (m *Device) SetSignalReport(mode int, interval int) error {
 	cmd := fmt.Sprintf("%s=%d,%d", m.commands.SignalReport, mode, interval)

@@ -22,34 +22,34 @@ type CommandSet struct {
 	Number       string // 查询本机号码 AT+CNUM
 
 	// 网络状态
-	Operator    string // 查询运营商 AT+COPS
-	NetworkMode string // 网络模式 AT+CNMP
-	NetworkReg  string // 网络注册状态 AT+CREG
-	GPRSReg     string // GPRS 注册状态 AT+CGREG
-	Signal      string // 信号质量 AT+CSQ
+	Operator    string // 查询/设置运营商、网络模式 AT+COPS
+	NetworkMode string // 查询/设置网络模式 AT+CNMP
+	NetworkReg  string // 查询/设置网络注册状态及通知 AT+CREG
+	GPRSReg     string // 查询/设置 GPRS 注册状态及通知 AT+CGREG
+	Signal      string // 查询信号质量/设置上报 AT+CSQ
 
 	// SIM 卡管理
-	SIMStatus string // 查询 SIM 卡状态 AT+CPIN
-	PINVerify string // PIN 码验证 AT+CPIN
-	PINChange string // PIN 码修改 AT+CPWD
-	PINLock   string // PIN 锁控制 AT+CLCK
+	SIMStatus string // 查询/验证 SIM 卡状态 AT+CPIN
+	PINVerify string // 验证 PIN 码 AT+CPIN
+	PINChange string // 修改 PIN 码 AT+CPWD
+	PINLock   string // 查询/设置 PIN 锁状态 AT+CLCK
 
 	// 设备状态
 	BatteryLevel string // 查询电池电量 AT+CBC
 	DeviceTemp   string // 查询设备温度 AT+CPMUTEMP
-	NetworkTime  string // 查询网络时间 AT+CCLK
+	NetworkTime  string // 查询/设置网络时间 AT+CCLK
 	SetTime      string // 设置时间 AT+CCLK
 
 	// 网络配置
-	APN        string // APN 配置 AT+CGDCONT
+	APN        string // 查询/设置 APN 配置 AT+CGDCONT
 	IPAddress  string // 查询 IP 地址 AT+CGPADDR
-	PDPContext string // PDP 上下文激活 AT+CGACT
+	PDPContext string // 查询/设置 PDP 上下文状态 AT+CGACT
 	SetAPN     string // 设置 APN AT+CGDCONT
 
 	// 短信相关
-	SmsFormat string // 设置短信格式 AT+CMGF
-	SmsStore  string // 设置短信存储位置 AT+CPMS
-	SmsCenter string // 查询短信中心号码 AT+CSCA
+	SmsFormat string // 查询/设置短信格式 AT+CMGF
+	SmsStore  string // 查询/设置短信存储位置 AT+CPMS
+	SmsCenter string // 查询/设置短信中心号码 AT+CSCA
 	ListSms   string // 列出短信 AT+CMGL
 	ReadSms   string // 读取短信 AT+CMGR
 	DeleteSms string // 删除短信 AT+CMGD
@@ -59,15 +59,15 @@ type CommandSet struct {
 	Dial      string // 拨号 ATD
 	Answer    string // 接听 ATA
 	Hangup    string // 挂断 ATH
-	CallerID  string // 来电显示 AT+CLIP
-	CallState string // 通话状态 AT+CLCC
-	CallWait  string // 呼叫等待 AT+CCWA
-	CallFWD   string // 呼叫转移 AT+CCFC
+	CallerID  string // 查询/设置来电显示 AT+CLIP
+	CallState string // 查询通话状态 AT+CLCC
+	CallWait  string // 查询/设置呼叫等待 AT+CCWA
+	CallFWD   string // 查询/设置呼叫转移 AT+CCFC
 
 	// 通知管理
-	NetworkRegNotify string // 网络注册通知 AT+CREG
-	GPRSRegNotify    string // GPRS 注册通知 AT+CGREG
-	SignalReport     string // 信号质量上报 AT+CSQ
+	NetworkRegNotify string // 查询/设置网络注册通知 AT+CREG
+	GPRSRegNotify    string // 查询/设置 GPRS 注册通知 AT+CGREG
+	SignalReport     string // 设置信号质量上报 AT+CSQ
 }
 
 // DefaultCommandSet 返回默认的标准 AT 命令集

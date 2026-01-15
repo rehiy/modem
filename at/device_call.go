@@ -19,7 +19,7 @@ func (m *Device) Hangup() error {
 	return m.SendCommandExpect(m.commands.Hangup, "OK")
 }
 
-// GetCallerID 获取来电显示状态
+// GetCallerID 查询来电显示状态
 func (m *Device) GetCallerID() (bool, error) {
 	responses, err := m.SendCommand(m.commands.CallerID + "?")
 	if err != nil {
@@ -36,6 +36,7 @@ func (m *Device) GetCallerID() (bool, error) {
 }
 
 // SetCallerID 设置来电显示
+// enable: 是否启用来电显示 [true: 启用, false: 禁用]
 func (m *Device) SetCallerID(enable bool) error {
 	cmd := m.commands.CallerID
 	if enable {
@@ -46,7 +47,7 @@ func (m *Device) SetCallerID(enable bool) error {
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// GetCallState 查询通话状态
+// GetCallState 查询通话状态列表
 func (m *Device) GetCallState() ([]map[string]any, error) {
 	responses, err := m.SendCommand(m.commands.CallState)
 	if err != nil {
@@ -102,6 +103,7 @@ func (m *Device) GetCallWait() (bool, error) {
 }
 
 // SetCallWait 设置呼叫等待
+// enable: 是否启用呼叫等待 [true: 启用, false: 禁用]
 func (m *Device) SetCallWait(enable bool) error {
 	status := 0
 	if enable {
@@ -133,7 +135,7 @@ func (m *Device) GetCallFWD(reason int) (bool, string, error) {
 
 // SetCallFWD 设置呼叫转移
 // reason: 转移原因 [0: 无条件, 1: 遇忙, 2: 无应答, 3: 无法接通, 4: 所有]
-// enable: 是否启用
+// enable: 是否启用呼叫转移 [true: 启用, false: 禁用]
 // number: 转移号码
 func (m *Device) SetCallFWD(reason int, enable bool, number string) error {
 	status := 0

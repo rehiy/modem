@@ -37,14 +37,14 @@ func (m *Device) SaveSettings() error {
 }
 
 // LoadProfile 加载指定配置文件
-// profile [0: 默认配置, 1: 配置文件1, 2: 配置文件2]
+// profile: 配置文件编号 [0: 默认配置, 1: 配置文件1, 2: 配置文件2]
 func (m *Device) LoadProfile(profile int) error {
 	cmd := fmt.Sprintf("%s%d", m.commands.LoadProfile, profile)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
 // SaveProfile 保存到指定配置文件
-// profile [0: 默认配置, 1: 配置文件1, 2: 配置文件2]
+// profile: 配置文件编号 [0: 默认配置, 1: 配置文件1, 2: 配置文件2]
 func (m *Device) SaveProfile(profile int) error {
 	cmd := fmt.Sprintf("%s%d", m.commands.SaveProfile, profile)
 	return m.SendCommandExpect(cmd, "OK")
@@ -52,7 +52,7 @@ func (m *Device) SaveProfile(profile int) error {
 
 // ===== 设备状态 =====
 
-// GetBatteryLevel 查询电池电量
+// GetBatteryLevel 查询电池电量及充电状态
 func (m *Device) GetBatteryLevel() (int, int, error) {
 	responses, err := m.SendCommand(m.commands.BatteryLevel)
 	if err != nil {
@@ -69,7 +69,8 @@ func (m *Device) GetBatteryLevel() (int, int, error) {
 	return parseInt(param[0]), parseInt(param[1]), nil
 }
 
-// GetDeviceTemp 查询设备温度
+// GetDeviceTemp 查询设备温度及状态
+// 返回温度值和状态 [0: 正常, 1: 过热]
 func (m *Device) GetDeviceTemp() (int, int, error) {
 	responses, err := m.SendCommand(m.commands.DeviceTemp)
 	if err != nil {
@@ -103,7 +104,7 @@ func (m *Device) GetNetworkTime() (string, error) {
 }
 
 // SetTime 设置网络时间
-// 格式: "YY/MM/DD,HH:MM:SS+TZ"
+// timeStr: 时间字符串，格式为 "YY/MM/DD,HH:MM:SS+TZ"，例如 "26/01/15,14:30:00+08"
 func (m *Device) SetTime(timeStr string) error {
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SetTime, timeStr)
 	return m.SendCommandExpect(cmd, "OK")
@@ -112,6 +113,7 @@ func (m *Device) SetTime(timeStr string) error {
 // ===== SIM 卡管理 =====
 
 // GetSIMStatus 查询 SIM 卡状态
+// 返回 SIM 状态代码 ["READY": 准备就绪, "SIM PIN": 需要 PIN 码, "SIM PUK": 需要 PUK 码, "PH-SIM PIN": 需要 PH-SIM PIN]
 func (m *Device) GetSIMStatus() (string, error) {
 	// 响应格式: "+CPIN: <code>"
 	// code: 状态代码 ["READY", "SIM PIN", "SIM PUK", "PH-SIM PIN"]
@@ -119,20 +121,24 @@ func (m *Device) GetSIMStatus() (string, error) {
 }
 
 // VerifyPIN 验证 PIN 码
+// pin: PIN 码
 func (m *Device) VerifyPIN(pin string) error {
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.PINVerify, pin)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
 // ChangePIN 修改 PIN 码
+// oldPIN: 旧 PIN 码
+// newPIN: 新 PIN 码
 func (m *Device) ChangePIN(oldPIN, newPIN string) error {
 	cmd := fmt.Sprintf("%s=\"SC\",\"%s\",\"%s\"", m.commands.PINChange, oldPIN, newPIN)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// UnlockPIN 锁定/解锁 PIN
-// enable [true: 启用, false: 禁用]
-// pinType ["SC": SIM 卡 PIN]
+// UnlockPIN 设置 PIN 锁状态
+// pinType: PIN 锁类型 ["SC": SIM 卡 PIN, "PS": SIM 卡 PUK, "PF": SIM 卡 FDN, "SC": 电话簿]
+// enable: 是否启用 PIN 锁 [true: 启用, false: 禁用]
+// password: PIN 码或 PUK 码
 func (m *Device) UnlockPIN(pinType string, enable bool, password string) error {
 	status := 0
 	if enable {
@@ -186,7 +192,8 @@ func (m *Device) GetICCID() (string, error) {
 	return m.SimpleQuery(m.commands.ICCID)
 }
 
-// GetNumber 查询手机号
+// GetNumber 查询本机号码
+// 返回 (电话号码, 号码类型)
 func (m *Device) GetNumber() (string, int, error) {
 	responses, err := m.SendCommand(m.commands.Number)
 	if err != nil {

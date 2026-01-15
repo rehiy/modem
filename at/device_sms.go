@@ -11,12 +11,12 @@ import (
 
 // SMS 短信信息
 type Sms struct {
-	Number  string `json:"number"`
-	Text    string `json:"text"`
-	Time    string `json:"time"`
+	Number  string `json:"number"`  // 电话号码
+	Text    string `json:"text"`    // 短信内容
+	Time    string `json:"time"`    // 时间戳
 	Index   int    `json:"index"`   // 首个分片的索引
 	Indices []int  `json:"indices"` // 所有分片的索引
-	Status  string `json:"status"`  // 短信状态 [PDU: TEXT, 0: "REC UNREAD", 1: "REC READ", 2: "STO UNSENT", 3: "STO SENT", 4: "ALL"]
+	Status  string `json:"status"`  // PUD模式短信状态 [0: "REC UNREAD", 1: "REC READ", 2: "STO UNSENT", 3: "STO SENT"]
 }
 
 // SetSmsMode 设置短信模式
@@ -26,8 +26,8 @@ func (m *Device) SetSmsMode(v int) error {
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// GetSmsMode 获取短信模式
-// 返回 [0: PDU 模式, 1: TEXT 模式]
+// GetSmsMode 查询短信模式
+// 返回值 [0: PDU 模式, 1: TEXT 模式]
 func (m *Device) GetSmsMode() (int, error) {
 	responses, err := m.SendCommand(m.commands.SmsFormat + "?")
 	if err != nil {
@@ -43,15 +43,17 @@ func (m *Device) GetSmsMode() (int, error) {
 	return parseInt(param[0]), nil
 }
 
-// SetSmsStore 设置短信存储
-// v [ME: 手机内存, SM: 短信存储]
+// SetSmsStore 设置短信存储位置
+// v1: 读取短信的存储位置 ["ME": 手机内存, "SM": SIM卡存储, "MT": 组合存储]
+// v2: 写入短信的存储位置 ["ME": 手机内存, "SM": SIM卡存储, "MT": 组合存储]
+// v3: 接收短信的存储位置 ["ME": 手机内存, "SM": SIM卡存储, "MT": 组合存储]
 func (m *Device) SetSmsStore(v1, v2, v3 string) error {
 	cmd := fmt.Sprintf("%s=\"%s\",\"%s\",\"%s\"", m.commands.SmsStore, v1, v2, v3)
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// GetSmsStore 获取短信存储配置
-// 返回 (读存储, 写存储, 接收存储)
+// GetSmsStore 查询短信存储配置
+// 返回 map 包含读/写/接收存储位置及使用情况
 func (m *Device) GetSmsStore() (map[string]any, error) {
 	responses, err := m.SendCommand(m.commands.SmsStore + "?")
 	if err != nil {
@@ -79,7 +81,7 @@ func (m *Device) GetSmsStore() (map[string]any, error) {
 	return result, nil
 }
 
-// GetSmsCenter 获取短信中心号码
+// GetSmsCenter 查询短信中心号码
 func (m *Device) GetSmsCenter() (string, int, error) {
 	responses, err := m.SendCommand(m.commands.SmsCenter + "?")
 	if err != nil {
@@ -88,7 +90,7 @@ func (m *Device) GetSmsCenter() (string, int, error) {
 
 	// 响应格式: "+CSCA: <number>,<tosca>"
 	// number: 短信中心号码
-	// tosca: 号码类型
+	// tosca: 号码类型 [129: 国际, 145: 国内]
 	param, err := parseResponse(m.commands.SmsCenter+"?", responses, 2)
 	if err != nil {
 		return "", 0, err
@@ -103,7 +105,9 @@ func (m *Device) SetSmsCenter(number string) error {
 	return m.SendCommandExpect(cmd, "OK")
 }
 
-// SendSmsPdu 发送短信
+// SendSmsPdu 发送短信（PDU 模式）
+// number: 接收方电话号码
+// message: 短信内容（支持中文）
 func (m *Device) SendSmsPdu(number, message string) error {
 	tpdus, err := sms.Encode([]byte(message), sms.To(number))
 	if err != nil {
@@ -148,7 +152,8 @@ func (m *Device) SendSmsPdu(number, message string) error {
 	return nil
 }
 
-// ListSMSPdu 获取短信列表
+// ListSmsPdu 获取短信列表
+// stat: 短信状态 [0: REC UNREAD - 未读, 1: REC READ - 已读, 2: STO UNSENT - 未发送, 3: STO SENT - 已发送, 4: ALL - 所有]
 func (m *Device) ListSmsPdu(stat int) ([]Sms, error) {
 	cmd := fmt.Sprintf("%s=%d", m.commands.ListSms, stat)
 	responses, err := m.SendCommand(cmd)
@@ -241,6 +246,7 @@ func (m *Device) ListSmsPdu(stat int) ([]Sms, error) {
 }
 
 // DeleteSms 批量删除指定索引的短信
+// indices: 短信索引列表
 func (m *Device) DeleteSms(indices []int) error {
 	for _, index := range indices {
 		cmd := fmt.Sprintf("%s=%d", m.commands.DeleteSms, index)

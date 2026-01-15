@@ -29,15 +29,15 @@ type NotificationSet struct {
 	SmsAck          string // +CNMA - 新消息确认
 
 	// 网络注册
-	NetworkReg string // +CREG - GSM 网络注册状态
-	GPRSReg    string // +CGREG - GPRS 网络注册状态
-	EPSReg     string // +CEREG - EPS (4G) 网络注册状态
-	Reg5G      string // +C5GREG - 5G 网络注册状态
-	VoiceReg   string // +CIREG - 语音网络注册状态
+	NetworkReg string // +CREG - GSM 网络注册状态及通知
+	GPRSReg    string // +CGREG - GPRS 网络注册状态及通知
+	EPSReg     string // +CEREG - EPS (4G) 网络注册状态及通知
+	Reg5G      string // +C5GREG - 5G 网络注册状态及通知
+	VoiceReg   string // +CIREG - 语音网络注册状态及通知
 
 	// 网络状态
-	Operator      string // +COPS - 运营商选择/变化
-	SignalQuality string // +CSQ - 信号质量
+	Operator      string // +COPS - 运营商选择及变化通知
+	SignalQuality string // +CSQ - 信号质量上报
 	NetworkTime   string // +CTZV - 网络时间（NITZ）
 	Timezone      string // +CTZU - 时区更新
 
