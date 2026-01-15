@@ -21,6 +21,7 @@ type ResponseSet struct {
 	// 错误响应
 	CMEError string // +CME ERROR - 移动设备错误
 	CMSError string // +CMS ERROR - 短信服务错误
+	CISError string // +CIS ERROR - 通信识别模块错误
 
 	// 提示符
 	Prompt string // > - 短信输入提示符
@@ -46,6 +47,7 @@ func DefaultResponseSet() *ResponseSet {
 		// 错误响应
 		CMEError: "+CME ERROR",
 		CMSError: "+CMS ERROR",
+		CISError: "+CIS ERROR",
 
 		// 提示符
 		Prompt: ">",
@@ -95,6 +97,7 @@ func (rs *ResponseSet) IsError(line string) bool {
 		rs.Busy,
 		rs.CMEError,
 		rs.CMSError,
+		rs.CISError,
 	}
 	for _, resp := range responses {
 		if resp != "" && strings.HasPrefix(line, resp) {
