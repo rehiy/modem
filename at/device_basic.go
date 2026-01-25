@@ -8,46 +8,46 @@ import (
 
 // Test 测试连接
 func (m *Device) Test() error {
-	return m.SendCommandExpect(m.commands.Test, "OK")
+	return m.SendExpect(m.commands.Test, "OK")
 }
 
 // EchoOff 关闭回显
 func (m *Device) EchoOff() error {
-	return m.SendCommandExpect(m.commands.EchoOff, "OK")
+	return m.SendExpect(m.commands.EchoOff, "OK")
 }
 
 // EchoOn 开启回显
 func (m *Device) EchoOn() error {
-	return m.SendCommandExpect(m.commands.EchoOn, "OK")
+	return m.SendExpect(m.commands.EchoOn, "OK")
 }
 
 // Reset 重启模块
 func (m *Device) Reset() error {
-	return m.SendCommandExpect(m.commands.Reset, "OK")
+	return m.SendExpect(m.commands.Reset, "OK")
 }
 
 // FactoryReset 恢复出厂设置
 func (m *Device) FactoryReset() error {
-	return m.SendCommandExpect(m.commands.FactoryReset, "OK")
+	return m.SendExpect(m.commands.FactoryReset, "OK")
 }
 
 // SaveSettings 保存设置到当前配置文件
 func (m *Device) SaveSettings() error {
-	return m.SendCommandExpect(m.commands.SaveSettings, "OK")
+	return m.SendExpect(m.commands.SaveSettings, "OK")
 }
 
 // LoadProfile 加载指定配置文件
 // profile: 配置文件编号 [0: 默认配置, 1: 配置文件1, 2: 配置文件2]
 func (m *Device) LoadProfile(profile int) error {
 	cmd := fmt.Sprintf("%s%d", m.commands.LoadProfile, profile)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // SaveProfile 保存到指定配置文件
 // profile: 配置文件编号 [0: 默认配置, 1: 配置文件1, 2: 配置文件2]
 func (m *Device) SaveProfile(profile int) error {
 	cmd := fmt.Sprintf("%s%d", m.commands.SaveProfile, profile)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // ===== 设备状态 =====
@@ -107,7 +107,7 @@ func (m *Device) GetNetworkTime() (string, error) {
 // timeStr: 时间字符串，格式为 "YY/MM/DD,HH:MM:SS+TZ"，例如 "26/01/15,14:30:00+08"
 func (m *Device) SetTime(timeStr string) error {
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SetTime, timeStr)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // ===== SIM 卡管理 =====
@@ -124,7 +124,7 @@ func (m *Device) GetSIMStatus() (string, error) {
 // pin: PIN 码
 func (m *Device) VerifyPIN(pin string) error {
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.PINVerify, pin)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // ChangePIN 修改 PIN 码
@@ -132,7 +132,7 @@ func (m *Device) VerifyPIN(pin string) error {
 // newPIN: 新 PIN 码
 func (m *Device) ChangePIN(oldPIN, newPIN string) error {
 	cmd := fmt.Sprintf("%s=\"SC\",\"%s\",\"%s\"", m.commands.PINChange, oldPIN, newPIN)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // UnlockPIN 设置 PIN 锁状态
@@ -145,7 +145,7 @@ func (m *Device) UnlockPIN(pinType string, enable bool, password string) error {
 		status = 1
 	}
 	cmd := fmt.Sprintf("%s=\"%s\",%d,\"%s\"", m.commands.PINLock, pinType, status, password)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // ===== 设备身份信息 =====

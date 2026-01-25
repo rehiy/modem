@@ -161,7 +161,8 @@ func (m *Device) Close() error
 
 // 命令发送
 func (m *Device) SendCommand(cmd string) ([]string, error)
-func (m *Device) SendCommandExpect(cmd, expected string) error
+func (m *Device) SendExpect(cmd, expected string) error
+func (m *Device) SimpleQuery(cmd string) (string, error)
 ```
 
 ### 配置结构

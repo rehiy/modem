@@ -6,17 +6,17 @@ import "fmt"
 
 // Dial 拨打电话
 func (m *Device) Dial(number string) error {
-	return m.SendCommandExpect(m.commands.Dial+number, "OK")
+	return m.SendExpect(m.commands.Dial+number, "OK")
 }
 
 // Answer 接听电话
 func (m *Device) Answer() error {
-	return m.SendCommandExpect(m.commands.Answer, "OK")
+	return m.SendExpect(m.commands.Answer, "OK")
 }
 
 // Hangup 挂断电话
 func (m *Device) Hangup() error {
-	return m.SendCommandExpect(m.commands.Hangup, "OK")
+	return m.SendExpect(m.commands.Hangup, "OK")
 }
 
 // GetCallerID 查询来电显示状态
@@ -44,7 +44,7 @@ func (m *Device) SetCallerID(enable bool) error {
 	} else {
 		cmd += "=0"
 	}
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetCallState 查询通话状态列表
@@ -110,7 +110,7 @@ func (m *Device) SetCallWait(enable bool) error {
 		status = 1
 	}
 	cmd := fmt.Sprintf("%s=0,,%d", m.commands.CallWait, status)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetCallFWD 查询呼叫转移状态
@@ -143,5 +143,5 @@ func (m *Device) SetCallFWD(reason int, enable bool, number string) error {
 		status = 1
 	}
 	cmd := fmt.Sprintf("%s=%d,%d,\"%s\"", m.commands.CallFWD, reason, status, number)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }

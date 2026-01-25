@@ -44,7 +44,7 @@ func (m *Device) GetNetworkMode() (int, error) {
 // mode: 网络模式 [2: 自动, 13: GSM ONLY, 38: LTE ONLY, 51: SA/NSA]
 func (m *Device) SetNetworkMode(mode int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.NetworkMode, mode)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetNetworkStatus 查询网络注册状态及通知配置
@@ -129,7 +129,7 @@ func (m *Device) GetAPN(cid int) (int, string, string, error) {
 // apn: 接入点名称
 func (m *Device) SetAPN(cid int, pdpType, apn string) error {
 	cmd := fmt.Sprintf("%s=%d,\"%s\",\"%s\"", m.commands.SetAPN, cid, pdpType, apn)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetPDPContext 查询 PDP 上下文状态
@@ -159,7 +159,7 @@ func (m *Device) GetPDPContext(cid int) (int, int, error) {
 // state: 状态 [0: 停用, 1: 激活]
 func (m *Device) SetPDPContext(cid int, state int) error {
 	cmd := fmt.Sprintf("%s=%d,%d", m.commands.PDPContext, cid, state)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetIPAddress 查询 IP 地址
@@ -206,7 +206,7 @@ func (m *Device) GetNetworkRegNotify() (int, error) {
 // mode: 通知模式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
 func (m *Device) SetNetworkRegNotify(mode int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.NetworkRegNotify, mode)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetGPRSRegNotify 查询 GPRS 注册通知设置
@@ -229,7 +229,7 @@ func (m *Device) GetGPRSRegNotify() (int, error) {
 // mode: 通知模式 [0: 禁用, 1: 启用, 2: 启用并显示位置信息]
 func (m *Device) SetGPRSRegNotify(mode int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.GPRSRegNotify, mode)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // SetSignalReport 设置信号质量上报
@@ -237,5 +237,5 @@ func (m *Device) SetGPRSRegNotify(mode int) error {
 // interval: 上报间隔(秒) [1-255]
 func (m *Device) SetSignalReport(mode int, interval int) error {
 	cmd := fmt.Sprintf("%s=%d,%d", m.commands.SignalReport, mode, interval)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }

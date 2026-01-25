@@ -24,7 +24,7 @@ type Sms struct {
 // v [0: PDU 模式, 1: TEXT 模式]
 func (m *Device) SetSmsMode(v int) error {
 	cmd := fmt.Sprintf("%s=%d", m.commands.SmsFormat, v)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetSmsMode 查询短信模式
@@ -50,7 +50,7 @@ func (m *Device) GetSmsMode() (int, error) {
 // v3: 接收短信的存储位置 ["ME": 手机内存, "SM": SIM卡存储, "MT": 组合存储]
 func (m *Device) SetSmsStore(v1, v2, v3 string) error {
 	cmd := fmt.Sprintf("%s=\"%s\",\"%s\",\"%s\"", m.commands.SmsStore, v1, v2, v3)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // GetSmsStore 查询短信存储配置
@@ -103,7 +103,7 @@ func (m *Device) GetSmsCenter() (string, int, error) {
 // SetSmsCenter 设置短信中心号码
 func (m *Device) SetSmsCenter(number string) error {
 	cmd := fmt.Sprintf("%s=\"%s\"", m.commands.SmsCenter, number)
-	return m.SendCommandExpect(cmd, "OK")
+	return m.SendExpect(cmd, "OK")
 }
 
 // SendSmsPdu 发送短信（PDU 模式）

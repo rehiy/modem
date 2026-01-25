@@ -132,8 +132,8 @@ func (m *Device) SendCommand(cmd string) ([]string, error) {
 	return m.readResponse()
 }
 
-// SendCommandExpect 发送命令并期望特定响应
-func (m *Device) SendCommandExpect(cmd string, expected string) error {
+// SendExpect 发送命令并期望特定响应
+func (m *Device) SendExpect(cmd string, expected string) error {
 	responses, err := m.SendCommand(cmd)
 	if err != nil {
 		return err
