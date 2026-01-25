@@ -1,6 +1,6 @@
 # Go AT 命令通信库
 
-[![Go Version](https://img.shields.io/badge/go-%3E%3D1.19-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
 
@@ -364,12 +364,12 @@ device.SetSignalReport(1, 10)
 | `Answer()` | `ATA` | - | 接听电话 |
 | `Hangup()` | `ATH` | - | 挂断电话 |
 | `GetCallerID()` | `AT+CLIP?` | `(bool)` | 来电显示状态 |
-| `SetCallerID(enable)` | `AT+CLIP` | enable | - | 设置来电显示 |
+| `SetCallerID(enable)` | `AT+CLIP` | enable | 设置来电显示 |
 | `GetCallState()` | `AT+CLCC` | `([]map[string]any)` | 通话状态列表 |
 | `GetCallWait()` | `AT+CCWA?` | `(bool)` | 呼叫等待状态 |
-| `SetCallWait(enable)` | `AT+CCWA` | enable | - | 设置呼叫等待 |
+| `SetCallWait(enable)` | `AT+CCWA` | enable | 设置呼叫等待 |
 | `GetCallFWD(reason)` | `AT+CCFC?` | `(bool, string)` | 状态, 转移号码 |
-| `SetCallFWD(reason, enable, number)` | `AT+CCFC` | reason, enable, number | - | 设置呼叫转移 |
+| `SetCallFWD(reason, enable, number)` | `AT+CCFC` | reason, enable, number | 设置呼叫转移 |
 
 ```go
 // 拨打电话

@@ -29,6 +29,29 @@ device := at.New(port, urcHandler, config)
 responses, err := device.SendCommand("AT+CREG?")
 ```
 
+### dev - 设备预设配置
+
+提供特定 Modem 设备的预设配置，简化设备初始化。
+
+**当前支持设备:**
+
+- ML307A - 中移物联模块
+
+**快速使用:**
+
+```go
+import "github.com/rehiy/modem/dev"
+
+// 获取 ML307A 设备预设配置
+ml307a := dev.NewML307A()
+config := &at.Config{
+    CommandSet:      ml307a.CommandSet,
+    ResponseSet:     ml307a.ResponseSet,
+    NotificationSet: ml307a.NotificationSet,
+}
+device := at.New(port, urcHandler, config)
+```
+
 ### sms - 短信编码/解码库
 
 提供 SMS TPDU 的编码和解码功能，遵循 3GPP 规范。
@@ -57,7 +80,7 @@ msg, _ := sms.Decode(tpdus)
 
 ## 依赖
 
-- Go 1.21+
+- Go 1.21+（使用 `atomic.Bool`、`slices.Clone` 等特性）
 
 ## 许可证
 

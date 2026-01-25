@@ -1,6 +1,6 @@
 # SMS TPDU 编码/解码库
 
-[![Go Version](https://img.shields.io/badge/go-%3E%3D1.19-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 一个功能完善的 Go 语言 SMS TPDU 编码/解码库，严格遵循 3GPP TS 23.040 和 3GPP TS 23.038 规范。
