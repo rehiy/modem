@@ -74,6 +74,9 @@ type NotificationSet struct {
 
 	// 其他服务
 	USSD string // +CUSD - 非结构化补充业务数据
+
+	// 自定义通知（厂商扩展）
+	CustomNotify []string // 自定义 URC 前缀列表（非标准，如 +QPING、+MPING）
 }
 
 // DefaultNotificationSet 返回默认的URC类型集合
@@ -146,6 +149,9 @@ func DefaultNotificationSet() *NotificationSet {
 
 		// 其他服务
 		USSD: "+CUSD",
+
+		// 自定义通知
+		CustomNotify: []string{},
 	}
 }
 
@@ -161,6 +167,13 @@ func (ns *NotificationSet) GetAllNotifications() []string {
 			if value != "" {
 				result = append(result, value)
 			}
+		}
+	}
+
+	// 添加自定义通知前缀列表
+	for _, value := range ns.CustomNotify {
+		if value != "" {
+			result = append(result, value)
 		}
 	}
 	return result

@@ -117,7 +117,16 @@ func (m *Device) SetTime(timeStr string) error {
 func (m *Device) GetSIMStatus() (string, error) {
 	// 响应格式: "+CPIN: <code>"
 	// code: 状态代码 ["READY", "SIM PIN", "SIM PUK", "PH-SIM PIN"]
-	return m.SimpleQuery(m.commands.SIMStatus)
+	// 必须带 "?" 查询，裸 AT+CPIN 会被模组拒绝（返回 ERROR）
+	responses, err := m.SendCommand(m.commands.SIMStatus + "?")
+	if err != nil {
+		return "", err
+	}
+	param, err := parseResponse(m.commands.SIMStatus, responses, 1)
+	if err != nil {
+		return "", err
+	}
+	return param[0], nil
 }
 
 // VerifyPIN 验证 PIN 码

@@ -161,9 +161,18 @@ func (m *Device) Close() error
 
 // 命令发送
 func (m *Device) SendCommand(cmd string) ([]string, error)
+func (m *Device) SendCommandWithTimeout(cmd string, timeout time.Duration) ([]string, error)
 func (m *Device) SendExpect(cmd, expected string) error
 func (m *Device) SimpleQuery(cmd string) (string, error)
 ```
+
+需要等待较长时间的命令可以单独指定超时，不影响后续命令的默认超时：
+
+```go
+responses, err := device.SendCommandWithTimeout("AT+COPS=?", 60*time.Second)
+```
+
+`timeout` 小于或等于零时使用 `Config.Timeout`，与 `SendCommand` 一致。超时时仍返回已收到的响应行，并返回超时错误。
 
 ### 配置结构
 
@@ -600,11 +609,15 @@ notifications := at.DefaultNotificationSet()
 // 某些厂商可能在 URC 前缀前添加厂商标识
 notifications.NetworkReg = "^CREG"
 notifications.IndicationEvent = "^CIEV"
+// 添加厂商异步通知，例如在命令返回 OK 后上报的 ping 结果
+notifications.CustomNotify = []string{"+QPING", "+MPING"}
 
 config := &at.Config{
     NotificationSet: notifications,
 }
 ```
+
+`CustomNotify` 中的空前缀会被忽略。执行同名 AT 命令时，相应的行仍作为命令响应收集；设备空闲或执行其他命令时，这些行交由 URC 回调处理。
 
 ## 最佳实践
 

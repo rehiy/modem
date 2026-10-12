@@ -102,6 +102,12 @@ func (m *Device) Close() error {
 
 // SendCommand 发送命令并等待响应
 func (m *Device) SendCommand(cmd string) ([]string, error) {
+	return m.SendCommandWithTimeout(cmd, 0)
+}
+
+// SendCommandWithTimeout 使用本次指定的超时发送命令并等待响应。
+// timeout 小于或等于零时沿用设备默认超时，不改变后续命令的超时配置。
+func (m *Device) SendCommandWithTimeout(cmd string, timeout time.Duration) ([]string, error) {
 	if m.closed.Load() {
 		return nil, fmt.Errorf("device closed")
 	}
@@ -129,7 +135,10 @@ func (m *Device) SendCommand(cmd string) ([]string, error) {
 		return nil, err
 	}
 
-	return m.readResponse()
+	if timeout <= 0 {
+		timeout = m.timeout
+	}
+	return m.readResponseWithTimeout(timeout)
 }
 
 // SendExpect 发送命令并期望特定响应
@@ -166,8 +175,13 @@ func (m *Device) SimpleQuery(cmd string) (string, error) {
 
 // readResponse 从响应通道读取响应
 func (m *Device) readResponse() ([]string, error) {
+	return m.readResponseWithTimeout(m.timeout)
+}
+
+// readResponseWithTimeout 从响应通道读取响应，使用指定超时时间
+func (m *Device) readResponseWithTimeout(timeout time.Duration) ([]string, error) {
 	var responses []string
-	timeout := time.After(m.timeout)
+	timer := time.After(timeout)
 
 	for {
 		select {
@@ -181,7 +195,7 @@ func (m *Device) readResponse() ([]string, error) {
 				return responses, nil
 			}
 
-		case <-timeout:
+		case <-timer:
 			return responses, fmt.Errorf("command timeout")
 		}
 	}
